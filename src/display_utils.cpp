@@ -51,6 +51,11 @@ void drawStatusBar() {
         drawWifiIcon(iconX, iconY, -50);
     } else if (currentState == STATE_CONNECTED) {
       drawWifiIcon(iconX, iconY, currentRssi);
+    } else if (currentState == STATE_OTA) {
+      // Optional: Could blink or show something specific, but text is main
+      // indicator
+      if (currentBlink)
+        drawWifiIcon(iconX, iconY, currentRssi);
     } else {
       tft.drawLine(iconX, iconY, iconX + 15, iconY + 15, TFT_RED);
       tft.drawLine(iconX + 15, iconY, iconX, iconY + 15, TFT_RED);
@@ -69,12 +74,17 @@ void drawStatusBar() {
     drawBatteryIcon(battX, battY, currentBattery);
   }
 
-  // 5. Update IP Address area
+  // 5. Update IP Address / Status Text area
   if (stateChanged || ipChanged) {
     tft.setTextSize(1);
     tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
 
-    if (currentIp[0] == 0) {
+    if (currentState == STATE_OTA) {
+      tft.fillRect(5, 4, 150, 20, TFT_MAGENTA); // Highlight background
+      tft.setTextColor(TFT_WHITE, TFT_MAGENTA);
+      tft.setCursor(10, 8);
+      tft.print("OTA UPDATE...");
+    } else if (currentIp[0] == 0) {
       tft.fillRect(5, 4, 100, 20, TFT_DARKGREY);
     } else {
       tft.setCursor(5, 4);

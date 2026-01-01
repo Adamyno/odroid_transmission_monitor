@@ -79,7 +79,11 @@ void setup() {
 
   // --- OTA Setup (Delay begin until WiFi/AP is ready) ---
   ArduinoOTA.setHostname("ODROID-GO-Monitor");
-  ArduinoOTA.onStart([]() { Serial.println("Start OTA"); });
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start OTA");
+    currentState = STATE_OTA;
+    drawStatusBar();
+  });
   ArduinoOTA.onEnd([]() { Serial.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -227,6 +231,8 @@ void setupServerRoutes() {
                   UPDATE_SIZE_UNKNOWN)) { // start with max available size
             Update.printError(Serial);
           }
+          currentState = STATE_OTA;
+          drawStatusBar();
         } else if (upload.status == UPLOAD_FILE_WRITE) {
           if (Update.write(upload.buf, upload.currentSize) !=
               upload.currentSize) {

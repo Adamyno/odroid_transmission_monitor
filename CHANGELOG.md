@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] - 2026-01-01
+### Added
+- "OTA UPDATE..." status indicator on the display when a firmware update is in progress (Web or OTA).
+
 ## [1.1.0] - 2026-01-01
 ### Added
 - Battery status indicator on the status bar (far right).
