@@ -34,18 +34,15 @@ String transPass = "";
 State currentState = STATE_AP_MODE;
 int otaProgress = 0;
 
-// LED Control (ODROID-GO has Blue LED on IO2)
-#define LED_BUILTIN 2
-
-unsigned long lastBlinkTime = 0;
-bool ledState = false;
-
 // --- Function Prototypes ---
 void loadConfig();
 void saveConfig();
 
 void deleteConfig();
-void setupAP();
+void setupAP(); // This will be replaced by startAPMode, but keeping for now as
+                // it's called in setupServerRoutes
+void startAPMode();
+void connectToWiFi();
 void setupServerRoutes();
 void handleRoot();
 void handleScan();
@@ -53,7 +50,6 @@ void handleSave();
 void handleReset();
 void handleRestart();
 void handleStatus();
-void updateLED();
 void handleGetParams();
 void handleSaveParams();
 void handleTestTransmission();
@@ -69,10 +65,7 @@ void setup() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(2);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(
-      LED_BUILTIN,
-      LOW); // Off? (Depends on circuit, usually active high for ODROID?)
+  tft.setTextSize(2);
 
   tft.fillRect(0, 0, 320, 24, 0x2104);
   // tft.drawFastHLine(0, 24, 320, TFT_WHITE);
@@ -112,13 +105,9 @@ void setup() {
   setupServerRoutes();
 
   if (ssid != "") {
-    currentState = STATE_CONNECTING;
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), password.c_str());
-    Serial.print("Connecting to: ");
-    Serial.println(ssid);
+    connectToWiFi();
   } else {
-    setupAP();
+    startAPMode();
   }
 
   ArduinoOTA.begin();
@@ -129,61 +118,84 @@ void setup() {
 
 // --- Loop ---
 void loop() {
-  ArduinoOTA.handle();
-  updateLED();
+  // --- Main Loop Logic ---
+  // 1. WiFi Status Management
+  static unsigned long dhcpStartTime = 0;
 
   if (currentState == STATE_CONNECTING) {
     if (WiFi.status() == WL_CONNECTED) {
-      currentState = STATE_CONNECTED;
-      Serial.println("\nConnected!");
-      Serial.print("IP: ");
-      Serial.println(WiFi.localIP());
+      Serial.println("WiFi Connected! Requesting IP...");
+      currentState = STATE_DHCP;
+      dhcpStartTime = millis();
+      drawStatusBar();
+    } else if (WiFi.status() == WL_CONNECT_FAILED ||
+               WiFi.status() == WL_NO_SSID_AVAIL) {
+      // Optional: Could handle immediate failures, but let's stick to simple
+      // retry/AP fallback
+    }
 
-      tft.fillRect(0, 25, 320, 215, TFT_BLACK); // ODROID height 240
+    // Check if we've been trying to connect for too long (e.g. 60s)?
+    // User asked for 30s timeout *after* connection during DHCP, but usually
+    // connecting itself also needs a timeout. Let's add a general connection
+    // timeout of 30s too for safety? For now, let's implement the specific DHCP
+    // timeout user requested.
+  }
+
+  if (currentState == STATE_DHCP) {
+    if (WiFi.localIP()[0] != 0) {
+      Serial.println("IP Obtained!");
+      currentState = STATE_CONNECTED;
       drawStatusBar();
 
+      // Show Dashboard immediately?
+      // showDashboard();
     } else {
-      static unsigned long startAttemptInfo = millis();
-      if (millis() - startAttemptInfo > 20000) {
-        Serial.println("Connection timeout. Switching to AP.");
-        setupAP();
+      if (millis() - dhcpStartTime > 30000) {
+        Serial.println("DHCP Timeout! Switching to AP Mode.");
+        startAPMode();
       }
     }
-  } else if (currentState == STATE_CONNECTED) {
+  }
+
+  // If we are connected but lose IP or connection?
+  if (currentState == STATE_CONNECTED) {
     if (WiFi.status() != WL_CONNECTED) {
       currentState = STATE_CONNECTING;
+      drawStatusBar();
     }
   }
 
-  server.handleClient();
-
-  static unsigned long lastStatusUpdate = 0;
-  if (millis() - lastStatusUpdate > 500) {
-    lastStatusUpdate = millis();
-    drawStatusBar();
+  if (currentState == STATE_AP_MODE || currentState == STATE_CONNECTED) {
+    server.handleClient();
   }
+
+  if (currentState == STATE_OTA) {
+    ArduinoOTA.handle();
+  }
+
+  // Update Status Bar
+  drawStatusBar();
 }
 
 // --- Implementation ---
 
-void updateLED() {
-  unsigned long currentMillis = millis();
+void startAPMode() {
+  Serial.println("Starting AP Mode");
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("ODROID-GO-Monitor", "password");
+  currentState = STATE_AP_MODE;
+  drawStatusBar();
 
-  if (currentState == STATE_AP_MODE) {
-    if (currentMillis - lastBlinkTime >= 1000) {
-      lastBlinkTime = currentMillis;
-      ledState = !ledState;
-      digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
-    }
-  } else if (currentState == STATE_CONNECTING) {
-    if (currentMillis - lastBlinkTime >= 200) {
-      lastBlinkTime = currentMillis;
-      ledState = !ledState;
-      digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
-    }
-  } else if (currentState == STATE_CONNECTED) {
-    digitalWrite(LED_BUILTIN, LOW); // Off
-  }
+  // Show Setup Page
+  handleScan();
+}
+
+void connectToWiFi() {
+  Serial.printf("Connecting to %s\n", ssid.c_str());
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  currentState = STATE_CONNECTING;
+  drawStatusBar();
 }
 
 void setupAP() {

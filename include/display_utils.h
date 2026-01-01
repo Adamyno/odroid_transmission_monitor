@@ -6,7 +6,13 @@
 #include <WiFi.h>
 
 // --- Shared State ---
-enum State { STATE_AP_MODE, STATE_CONNECTING, STATE_CONNECTED, STATE_OTA };
+enum State {
+  STATE_AP_MODE,
+  STATE_CONNECTING,
+  STATE_DHCP,
+  STATE_CONNECTED,
+  STATE_OTA
+};
 
 // --- External Globals ---
 extern TFT_eSPI tft;

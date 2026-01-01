@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.6] - 2026-01-01
+### Changed
+- WiFi Connection Logic: Removed physical LED blinking.
+- Status Bar: Added detailed feedback for "Connecting:" (Grey icon) and "DHCP request..." (Green icon).
+- Connection Timeout: Implemented a 30-second timeout for DHCP to fallback to AP mode.
+
 ## [1.3.5] - 2026-01-01
 ### Changed
 - Refined status bar: Completely removed the last remaining white line from boot setup.

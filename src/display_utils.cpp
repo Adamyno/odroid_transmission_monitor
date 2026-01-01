@@ -12,7 +12,10 @@ static float lastBattery = -1.0;
 void drawStatusBar() {
   // 1. Determine current values
   bool currentBlink = (millis() / 500) % 2 == 0;
-  long currentRssi = (currentState == STATE_CONNECTED) ? WiFi.RSSI() : 0;
+  long currentRssi =
+      (currentState == STATE_CONNECTED || currentState == STATE_DHCP)
+          ? WiFi.RSSI()
+          : 0;
   IPAddress currentIp;
   if (currentState == STATE_CONNECTED)
     currentIp = WiFi.localIP();
@@ -51,13 +54,14 @@ void drawStatusBar() {
     if (currentState == STATE_AP_MODE) {
       drawAPIcon(iconX, iconY);
     } else if (currentState == STATE_CONNECTING) {
-      if (currentBlink)
-        drawWifiIcon(iconX, iconY, -50);
+      // Grey icon for connecting
+      drawWifiIcon(iconX, iconY, -100); // -100 forces grey bars
+    } else if (currentState == STATE_DHCP) {
+      // Green icon for DHCP (we have connection, just no IP)
+      drawWifiIcon(iconX, iconY, currentRssi);
     } else if (currentState == STATE_CONNECTED) {
       drawWifiIcon(iconX, iconY, currentRssi);
     } else if (currentState == STATE_OTA) {
-      // Optional: Could blink or show something specific, but text is main
-      // indicator
       if (currentBlink)
         drawWifiIcon(iconX, iconY, currentRssi);
     } else {
@@ -102,8 +106,19 @@ void drawStatusBar() {
       tft.fillRect(barX + 2, barY, progressW, barH, TFT_GREEN);
       tft.fillRect(barX + 2 + progressW, barY, barW - progressW, barH,
                    TFT_BLACK);
+    } else if (currentState == STATE_CONNECTING) {
+      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
+      tft.setCursor(5, 4);
+      tft.print("Connecting:");
+      tft.setCursor(5, 14);
+      extern String ssid;
+      tft.print(ssid);
+    } else if (currentState == STATE_DHCP) {
+      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
+      tft.setCursor(5, 4);
+      tft.print("DHCP request...");
     } else if (currentIp[0] == 0) {
-      tft.fillRect(5, 4, 100, 20, STATUSBAR_BG);
+      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
     } else {
       tft.setCursor(5, 4);
       tft.printf("%d.%d  ", currentIp[0], currentIp[1]);
@@ -173,6 +188,8 @@ void drawWifiIcon(int x, int y, long rssi) {
   for (int i = 0; i < 4; i++) {
     int h = (i + 1) * 4;
     uint16_t color = (i < bars) ? TFT_GREEN : TFT_BLACK;
+    if (rssi == -100)
+      color = 0x7BEF; // Custom Grey for connecting state
     tft.fillRect(x + (i * 4), y + (16 - h), 3, h, color);
   }
 }
