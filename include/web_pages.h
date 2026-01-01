@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.3.1";
+const char *const VERSION = "1.3.2";
 
 // --- HTML Content ---
 
@@ -156,7 +156,7 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     .batt-container { width: 34px; height: 18px; border: 2px solid #fff; border-radius: 3px; position: relative; display: flex; align-items: center; justify-content: center; }
     .batt-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #27ae60; transition: width 0.3s, background 0.3s; z-index: 1; }
     .batt-cap { width: 3px; height: 8px; background: #fff; position: absolute; right: -5px; top: 3px; border-radius: 0 2px 2px 0; }
-    .batt-text { position: relative; z-index: 2; font-size: 10px; color: #000; font-weight: bold; text-shadow: 0 0 2px rgba(255,255,255,0.8); }
+    .batt-text { position: relative; top: 1px; z-index: 2; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 0 0 2px rgba(0,0,0,0.8); }
     .batt-low { background: #e67e22; }
     .batt-critical { background: #e74c3c; }
   </style>

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.2] - 2026-01-01
+### Changed
+- Web UI: Improved battery percentage text readability (white color, dark shadow, centered alignment).
+
 ## [1.3.1] - 2026-01-01
 ### Fixed
 - Corrected battery voltage reading (removed incorrect calibration factor).
