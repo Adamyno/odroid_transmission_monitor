@@ -288,6 +288,8 @@ void handleRoot() {
     page.replace("%IP%", WiFi.localIP().toString());
     page.replace("%RSSI%", String(WiFi.RSSI()));
     page.replace("%MAC%", WiFi.macAddress());
+    page.replace("%VERSION%", VERSION);
+    page.replace("%BUILD_DATE%", BUILD_DATE);
     server.send(200, "text/html", page);
   } else {
     server.send(200, "text/html", index_html);

@@ -22,8 +22,8 @@ void drawStatusBar() {
   bool ipChanged = (currentIp != lastIp);
   bool blinkChanged = (currentBlink != lastBlinkState);
 
-  // Icon Position (Right aligned)
-  int iconX = 205;
+  // Icon Position (Far right for 320px screen)
+  int iconX = 295;
   int iconY = 4;
 
   // 3. Update Background and Border if state changed
@@ -38,7 +38,7 @@ void drawStatusBar() {
 
     // Clear only icon area if not already cleared by stateChanged
     if (!stateChanged) {
-      tft.fillRect(iconX, iconY, 30, 16, TFT_DARKGREY);
+      tft.fillRect(iconX, iconY, 24, 16, TFT_DARKGREY);
     }
 
     if (currentState == STATE_AP_MODE) {

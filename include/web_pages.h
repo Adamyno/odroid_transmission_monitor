@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.0.0"; // Initial ODROID release
+const char *const VERSION = "1.0.1";
 
 // --- HTML Content ---
 
@@ -226,9 +226,9 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       <h3>About Device</h3>
       <div class="stat"><div class="label">Software</div><div class="value">Odroid Transmission Remote Monitor</div></div>
       <div class="stat"><div class="label">Device Name</div><div class="value">ODROID-GO (ESP32)</div></div>
-      <div class="stat"><div class="label">Version</div><div class="value">1.0.1</div></div>
+      <div class="stat"><div class="label">Version</div><div class="value">%VERSION%</div></div>
       <div class="stat"><div class="label">Developer</div><div class="value">Adam Pretz</div></div>
-      <div class="stat"><div class="label">Build Date</div><div class="value">2026. jan. 01.</div></div>
+      <div class="stat"><div class="label">Build Date</div><div class="value">%BUILD_DATE%</div></div>
     </div>
   </div>
 
