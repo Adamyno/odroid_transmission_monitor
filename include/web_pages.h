@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.2.0";
+const char *const VERSION = "1.3.0";
 
 // --- HTML Content ---
 
@@ -150,14 +150,29 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     .signal-3 .bar-1, .signal-3 .bar-2, .signal-3 .bar-3 { background: #00dbde; }
     .signal-4 .bar-1, .signal-4 .bar-2, .signal-4 .bar-3, .signal-4 .bar-4 { background: #00dbde; }
     .flex-row { display: flex; align-items: center; }
+    
+    /* Battery Icon */
+    .nav-batt { display: flex; align-items: center; margin-left: auto; padding-right: 15px; font-size: 0.9em; font-weight: bold; }
+    .batt-container { width: 30px; height: 16px; border: 2px solid #fff; border-radius: 3px; position: relative; margin-left: 8px; }
+    .batt-fill { height: 100%; width: 0%; background: #27ae60; transition: width 0.3s, background 0.3s; }
+    .batt-cap { width: 4px; height: 8px; background: #fff; position: absolute; right: -5px; top: 2px; border-radius: 0 2px 2px 0; }
+    .batt-low { background: #e67e22; }
+    .batt-critical { background: #e74c3c; }
   </style>
 </head>
 <body>
 
-  <nav>
+  <nav style="display: flex;">
     <button class="tab-link active" onclick="openTab(event, 'Status')">Status</button>
     <button class="tab-link" onclick="openTab(event, 'Settings')">Settings</button>
     <button class="tab-link" onclick="openTab(event, 'About')">About</button>
+    <div class="nav-batt">
+      <span id="nav-batt-val">--%</span>
+      <div class="batt-container">
+        <div id="nav-batt-fill" class="batt-fill"></div>
+        <div class="batt-cap"></div>
+      </div>
+    </div>
   </nav>
 
   <!-- STATUS TAB -->
@@ -178,6 +193,10 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
         </div>
       </div>
       <div class="stat"><div class="label">Device MAC</div><div class="value">%MAC%</div></div>
+      <div class="stat">
+        <div class="label">Battery Voltage</div>
+        <div class="value"><span id="batt-volt">--</span> V</div>
+      </div>
     </div>
 
 
@@ -250,21 +269,41 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
 
     // Status Updates
     function updateSignal() {
-      fetch('/status').then(res => res.json()).then(data => {
-        const rssi = data.rssi;
-        const rssiEl = document.getElementById('rssi-val');
-        if(rssiEl) rssiEl.innerText = rssi;
-        
-        const icon = document.getElementById('wifi-icon');
-        if(icon) {
-          icon.className = 'wifi-icon';
-          if (rssi >= -60) icon.classList.add('signal-4');
-          else if (rssi >= -70) icon.classList.add('signal-3');
-          else if (rssi >= -80) icon.classList.add('signal-2');
-          else icon.classList.add('signal-1');
-        }
-      }).catch(e => console.log(e));
-    }
+    fetch('/status').then(r => r.json()).then(data => {
+      const rssi = data.rssi;
+      const val = document.getElementById('rssi-val');
+      const icon = document.getElementById('wifi-icon');
+      if(val) val.innerText = rssi;
+      
+      if(icon) {
+        icon.className = 'wifi-icon';
+        if(rssi > -60) icon.classList.add('signal-4');
+        else if(rssi > -70) icon.classList.add('signal-3');
+        else if(rssi > -80) icon.classList.add('signal-2');
+        else if(rssi > -90) icon.classList.add('signal-1');
+        else icon.classList.add('signal-0');
+      }
+
+      // Battery Update
+      const volt = data.batt;
+      let pct = Math.round((volt - 3.4) / (4.2 - 3.4) * 100);
+      if(pct > 100) pct = 100;
+      if(pct < 0) pct = 0;
+
+      const battVal = document.getElementById('nav-batt-val');
+      const battFill = document.getElementById('nav-batt-fill');
+      const battVolt = document.getElementById('batt-volt');
+
+      if(battVal) battVal.innerText = pct + '%';
+      if(battVolt) battVolt.innerText = volt.toFixed(2);
+      if(battFill) {
+        battFill.style.width = pct + '%';
+        battFill.classList.remove('batt-low', 'batt-critical');
+        if(pct < 10) battFill.classList.add('batt-critical');
+        else if(pct < 25) battFill.classList.add('batt-low');
+      }
+    }).catch(e => console.log(e));
+  }
 
     setInterval(updateSignal, 2000);
     updateSignal();

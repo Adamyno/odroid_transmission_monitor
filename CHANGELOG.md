@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.0] - 2026-01-01
+### Added
+- Battery voltage and dynamic icon in the web dashboard (Navigation bar and Status tab).
+- Color-coded battery alerts on Web UI (Yellow < 25%, Red < 10%).
+
 ## [1.2.0] - 2026-01-01
 ### Added
 - "OTA UPDATE..." status indicator on the display when a firmware update is in progress (Web or OTA).

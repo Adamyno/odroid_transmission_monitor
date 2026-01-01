@@ -63,8 +63,7 @@ void drawStatusBar() {
   }
 
   // 4b. Update Battery area
-  int raw = analogRead(36);
-  float currentBattery = (raw / 4095.0) * 2.0 * 3.3 * 1.1;
+  float currentBattery = getBatteryVoltage();
   bool batteryChanged = (abs(currentBattery - lastBattery) > 0.05);
 
   if (stateChanged || batteryChanged) {
@@ -125,6 +124,11 @@ void drawBatteryIcon(int x, int y, float voltage) {
   if (w > 0) {
     tft.fillRect(x + 2, y + 4, w, 8, color);
   }
+}
+
+float getBatteryVoltage() {
+  int raw = analogRead(36);
+  return (raw / 4095.0) * 2.0 * 3.3 * 1.1;
 }
 
 void drawAPIcon(int x, int y) {

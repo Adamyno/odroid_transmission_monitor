@@ -346,8 +346,9 @@ void handleRestart() {
 }
 
 void handleStatus() {
-  DynamicJsonDocument doc(64);
+  DynamicJsonDocument doc(128);
   doc["rssi"] = WiFi.RSSI();
+  doc["batt"] = getBatteryVoltage();
   String json;
   serializeJson(doc, json);
   server.send(200, "application/json", json);
