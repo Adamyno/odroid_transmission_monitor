@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.5] - 2026-01-01
+### Changed
+- Refined status bar: Completely removed the last remaining white line from boot setup.
+- OTA Display: Updated label to "OTA UPGRADE..." for better clarity.
+
 ## [1.3.4] - 2026-01-01
 ### Changed
 - ODROID-GO Display: Darkened status bar background and removed the bottom white boundary line.

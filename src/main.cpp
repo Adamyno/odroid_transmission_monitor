@@ -74,8 +74,8 @@ void setup() {
       LED_BUILTIN,
       LOW); // Off? (Depends on circuit, usually active high for ODROID?)
 
-  tft.fillRect(0, 0, 320, 24, TFT_DARKGREY); // ODROID width is 320
-  tft.drawFastHLine(0, 24, 320, TFT_WHITE);
+  tft.fillRect(0, 0, 320, 24, 0x2104);
+  // tft.drawFastHLine(0, 24, 320, TFT_WHITE);
   // drawStatusBar(); // Don't call yet, WiFi not ready
 
   // --- OTA Setup (Delay begin until WiFi/AP is ready) ---

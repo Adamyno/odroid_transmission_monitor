@@ -86,7 +86,7 @@ void drawStatusBar() {
       // Clear area
       tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
       tft.setCursor(5, 4);
-      tft.print("OTA");
+      tft.print("OTA UPGRADE...");
 
       // Simple Progress Bar: | [=====     ] |
       int barX = 5;
