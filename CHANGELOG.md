@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.4] - 2026-01-01
+### Changed
+- ODROID-GO Display: Darkened status bar background and removed the bottom white boundary line.
+
 ## [1.3.3] - 2026-01-01
 ### Changed
 - OTA Update display: Replaced magenta background with a clean "OTA" text and a progress bar with boundary markers.

@@ -7,6 +7,8 @@ static IPAddress lastIp;
 static bool lastBlinkState = false;
 static float lastBattery = -1.0;
 
+#define STATUSBAR_BG 0x2104
+
 void drawStatusBar() {
   // 1. Determine current values
   bool currentBlink = (millis() / 500) % 2 == 0;
@@ -34,8 +36,7 @@ void drawStatusBar() {
 
   // 3. Update Background and Border if state changed
   if (stateChanged) {
-    tft.fillRect(0, 0, 320, 24, TFT_DARKGREY);
-    tft.drawFastHLine(0, 24, 320, TFT_WHITE);
+    tft.fillRect(0, 0, 320, 24, STATUSBAR_BG);
   }
 
   // 4. Update Icon area
@@ -44,7 +45,7 @@ void drawStatusBar() {
 
     // Clear only icon area if not already cleared by stateChanged
     if (!stateChanged) {
-      tft.fillRect(iconX, iconY, 24, 16, TFT_DARKGREY);
+      tft.fillRect(iconX, iconY, 24, 16, STATUSBAR_BG);
     }
 
     if (currentState == STATE_AP_MODE) {
@@ -71,7 +72,7 @@ void drawStatusBar() {
 
   if (stateChanged || batteryChanged) {
     if (!stateChanged) {
-      tft.fillRect(battX, battY, 22, 16, TFT_DARKGREY);
+      tft.fillRect(battX, battY, 22, 16, STATUSBAR_BG);
     }
     drawBatteryIcon(battX, battY, currentBattery);
   }
@@ -79,11 +80,11 @@ void drawStatusBar() {
   // 5. Update IP Address / Status Text area
   if (stateChanged || ipChanged || otaChanged) {
     tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
+    tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
 
     if (currentState == STATE_OTA) {
       // Clear area
-      tft.fillRect(5, 4, 150, 20, TFT_DARKGREY);
+      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
       tft.setCursor(5, 4);
       tft.print("OTA");
 
@@ -102,7 +103,7 @@ void drawStatusBar() {
       tft.fillRect(barX + 2 + progressW, barY, barW - progressW, barH,
                    TFT_BLACK);
     } else if (currentIp[0] == 0) {
-      tft.fillRect(5, 4, 100, 20, TFT_DARKGREY);
+      tft.fillRect(5, 4, 100, 20, STATUSBAR_BG);
     } else {
       tft.setCursor(5, 4);
       tft.printf("%d.%d  ", currentIp[0], currentIp[1]);
