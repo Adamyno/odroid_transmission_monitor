@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] - 2026-01-01
+### Fixed
+- Corrected battery voltage reading (removed incorrect calibration factor).
+### Changed
+- Web UI: Battery icon moved next to nav buttons; percentage shown inside the icon.
+
 ## [1.3.0] - 2026-01-01
 ### Added
 - Battery voltage and dynamic icon in the web dashboard (Navigation bar and Status tab).

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.3.0";
+const char *const VERSION = "1.3.1";
 
 // --- HTML Content ---
 
@@ -152,10 +152,11 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     .flex-row { display: flex; align-items: center; }
     
     /* Battery Icon */
-    .nav-batt { display: flex; align-items: center; margin-left: auto; padding-right: 15px; font-size: 0.9em; font-weight: bold; }
-    .batt-container { width: 30px; height: 16px; border: 2px solid #fff; border-radius: 3px; position: relative; margin-left: 8px; }
-    .batt-fill { height: 100%; width: 0%; background: #27ae60; transition: width 0.3s, background 0.3s; }
-    .batt-cap { width: 4px; height: 8px; background: #fff; position: absolute; right: -5px; top: 2px; border-radius: 0 2px 2px 0; }
+    .nav-batt { display: flex; align-items: center; margin-left: 10px; font-size: 0.9em; font-weight: bold; }
+    .batt-container { width: 34px; height: 18px; border: 2px solid #fff; border-radius: 3px; position: relative; display: flex; align-items: center; justify-content: center; }
+    .batt-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #27ae60; transition: width 0.3s, background 0.3s; z-index: 1; }
+    .batt-cap { width: 3px; height: 8px; background: #fff; position: absolute; right: -5px; top: 3px; border-radius: 0 2px 2px 0; }
+    .batt-text { position: relative; z-index: 2; font-size: 10px; color: #000; font-weight: bold; text-shadow: 0 0 2px rgba(255,255,255,0.8); }
     .batt-low { background: #e67e22; }
     .batt-critical { background: #e74c3c; }
   </style>
@@ -167,9 +168,9 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     <button class="tab-link" onclick="openTab(event, 'Settings')">Settings</button>
     <button class="tab-link" onclick="openTab(event, 'About')">About</button>
     <div class="nav-batt">
-      <span id="nav-batt-val">--%</span>
       <div class="batt-container">
         <div id="nav-batt-fill" class="batt-fill"></div>
+        <span id="nav-batt-val" class="batt-text">--%</span>
         <div class="batt-cap"></div>
       </div>
     </div>

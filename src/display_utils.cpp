@@ -128,7 +128,7 @@ void drawBatteryIcon(int x, int y, float voltage) {
 
 float getBatteryVoltage() {
   int raw = analogRead(36);
-  return (raw / 4095.0) * 2.0 * 3.3 * 1.1;
+  return (raw / 4095.0) * 2.0 * 3.3;
 }
 
 void drawAPIcon(int x, int y) {
