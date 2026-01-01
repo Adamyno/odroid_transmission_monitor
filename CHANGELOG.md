@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.0] - 2026-01-01
+### Added
+- Battery status indicator on the status bar (far right).
+- Repositioned WiFi signal icon to the left of the battery indicator.
+
 ## [1.0.1] - 2026-01-01
 ### Changed
 - Relocated WiFi signal strength icon to the far right of the status bar for better visibility.

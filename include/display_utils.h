@@ -16,5 +16,6 @@ extern State currentState;
 void drawStatusBar();
 void drawWifiIcon(int x, int y, long rssi);
 void drawAPIcon(int x, int y);
+void drawBatteryIcon(int x, int y, float voltage);
 
 #endif

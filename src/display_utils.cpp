@@ -5,6 +5,7 @@ static State lastState = (State)-1;
 static long lastRssi = -1000;
 static IPAddress lastIp;
 static bool lastBlinkState = false;
+static float lastBattery = -1.0;
 
 void drawStatusBar() {
   // 1. Determine current values
@@ -22,14 +23,16 @@ void drawStatusBar() {
   bool ipChanged = (currentIp != lastIp);
   bool blinkChanged = (currentBlink != lastBlinkState);
 
-  // Icon Position (Far right for 320px screen)
-  int iconX = 295;
+  // Icon Positions (320px screen)
+  int battX = 295; // Battery on the far right
+  int iconX = 270; // Wifi next to it
   int iconY = 4;
+  int battY = 4;
 
   // 3. Update Background and Border if state changed
   if (stateChanged) {
-    tft.fillRect(0, 0, 240, 24, TFT_DARKGREY);
-    tft.drawFastHLine(0, 24, 240, TFT_WHITE);
+    tft.fillRect(0, 0, 320, 24, TFT_DARKGREY);
+    tft.drawFastHLine(0, 24, 320, TFT_WHITE);
   }
 
   // 4. Update Icon area
@@ -54,6 +57,18 @@ void drawStatusBar() {
     }
   }
 
+  // 4b. Update Battery area
+  int raw = analogRead(36);
+  float currentBattery = (raw / 4095.0) * 2.0 * 3.3 * 1.1;
+  bool batteryChanged = (abs(currentBattery - lastBattery) > 0.05);
+
+  if (stateChanged || batteryChanged) {
+    if (!stateChanged) {
+      tft.fillRect(battX, battY, 22, 16, TFT_DARKGREY);
+    }
+    drawBatteryIcon(battX, battY, currentBattery);
+  }
+
   // 5. Update IP Address area
   if (stateChanged || ipChanged) {
     tft.setTextSize(1);
@@ -75,6 +90,31 @@ void drawStatusBar() {
   lastRssi = currentRssi;
   lastIp = currentIp;
   lastBlinkState = currentBlink;
+  lastBattery = currentBattery;
+}
+
+void drawBatteryIcon(int x, int y, float voltage) {
+  // Outline
+  tft.drawRect(x, y + 2, 18, 12, TFT_WHITE);
+  tft.fillRect(x + 18, y + 5, 2, 6, TFT_WHITE);
+
+  // Fill based on voltage (approx 3.3V - 4.2V range)
+  float percentage = (voltage - 3.4) / (4.2 - 3.4);
+  if (percentage < 0)
+    percentage = 0;
+  if (percentage > 1.0)
+    percentage = 1.0;
+
+  int w = percentage * 14;
+  uint16_t color = TFT_GREEN;
+  if (percentage < 0.2)
+    color = TFT_RED;
+  else if (percentage < 0.5)
+    color = TFT_ORANGE;
+
+  if (w > 0) {
+    tft.fillRect(x + 2, y + 4, w, 8, color);
+  }
 }
 
 void drawAPIcon(int x, int y) {
