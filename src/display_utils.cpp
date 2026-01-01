@@ -22,6 +22,9 @@ void drawStatusBar() {
   bool rssiChanged = (currentRssi != lastRssi);
   bool ipChanged = (currentIp != lastIp);
   bool blinkChanged = (currentBlink != lastBlinkState);
+  static int lastOtaProgress = -1;
+  bool otaChanged =
+      (currentState == STATE_OTA && otaProgress != lastOtaProgress);
 
   // Icon Positions (320px screen)
   int battX = 295; // Battery on the far right
@@ -74,15 +77,30 @@ void drawStatusBar() {
   }
 
   // 5. Update IP Address / Status Text area
-  if (stateChanged || ipChanged) {
+  if (stateChanged || ipChanged || otaChanged) {
     tft.setTextSize(1);
     tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
 
     if (currentState == STATE_OTA) {
-      tft.fillRect(5, 4, 150, 20, TFT_MAGENTA); // Highlight background
-      tft.setTextColor(TFT_WHITE, TFT_MAGENTA);
-      tft.setCursor(10, 8);
-      tft.print("OTA UPDATE...");
+      // Clear area
+      tft.fillRect(5, 4, 150, 20, TFT_DARKGREY);
+      tft.setCursor(5, 4);
+      tft.print("OTA");
+
+      // Simple Progress Bar: | [=====     ] |
+      int barX = 5;
+      int barY = 16;
+      int barW = 80;
+      int barH = 6;
+
+      tft.drawFastVLine(barX, barY - 1, barH + 2, TFT_WHITE); // Left |
+      tft.drawFastVLine(barX + barW + 2, barY - 1, barH + 2,
+                        TFT_WHITE); // Right |
+
+      int progressW = (otaProgress * barW) / 100;
+      tft.fillRect(barX + 2, barY, progressW, barH, TFT_GREEN);
+      tft.fillRect(barX + 2 + progressW, barY, barW - progressW, barH,
+                   TFT_BLACK);
     } else if (currentIp[0] == 0) {
       tft.fillRect(5, 4, 100, 20, TFT_DARKGREY);
     } else {
@@ -100,6 +118,7 @@ void drawStatusBar() {
   lastIp = currentIp;
   lastBlinkState = currentBlink;
   lastBattery = currentBattery;
+  lastOtaProgress = otaProgress;
 }
 
 void drawBatteryIcon(int x, int y, float voltage) {

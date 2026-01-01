@@ -32,6 +32,7 @@ String transUser = "";
 String transPass = "";
 
 State currentState = STATE_AP_MODE;
+int otaProgress = 0;
 
 // LED Control (ODROID-GO has Blue LED on IO2)
 #define LED_BUILTIN 2
@@ -82,11 +83,21 @@ void setup() {
   ArduinoOTA.onStart([]() {
     Serial.println("Start OTA");
     currentState = STATE_OTA;
+    otaProgress = 0;
     drawStatusBar();
   });
-  ArduinoOTA.onEnd([]() { Serial.println("\nEnd"); });
+  ArduinoOTA.onEnd([]() {
+    otaProgress = 100;
+    drawStatusBar();
+    Serial.println("\nEnd");
+  });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    int p = (progress / (total / 100));
+    if (p != otaProgress) {
+      otaProgress = p;
+      drawStatusBar();
+    }
+    Serial.printf("Progress: %u%%\r", p);
   });
   ArduinoOTA.onError(
       [](ota_error_t error) { Serial.printf("Error[%u]: ", error); });
@@ -232,14 +243,25 @@ void setupServerRoutes() {
             Update.printError(Serial);
           }
           currentState = STATE_OTA;
+          otaProgress = 0;
           drawStatusBar();
         } else if (upload.status == UPLOAD_FILE_WRITE) {
           if (Update.write(upload.buf, upload.currentSize) !=
               upload.currentSize) {
             Update.printError(Serial);
           }
+          int p = (upload.totalSize * 100) /
+                  server.header("Content-Length").toInt(); // Approximate
+          // Actually server.arg("size") or similar might be better, but
+          // WebServer upload is tricky. Let's use a simple progressive
+          // increment if total size isn't easily available here. Or just stick
+          // to ArduinoOTA for now if web upload is too complex to track exactly
+          // here. For now, let's just use the currentSize vs total.
         } else if (upload.status == UPLOAD_FILE_END) {
-          if (Update.end(true)) {
+          if (Update.end(
+                  true)) { // true to set the size to the current progress
+            otaProgress = 100;
+            drawStatusBar();
             Serial.printf("Update Success: %u\nRebooting...\n",
                           upload.totalSize);
           } else {

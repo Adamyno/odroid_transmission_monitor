@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.3] - 2026-01-01
+### Changed
+- OTA Update display: Replaced magenta background with a clean "OTA" text and a progress bar with boundary markers.
+
 ## [1.3.2] - 2026-01-01
 ### Changed
 - Web UI: Improved battery percentage text readability (white color, dark shadow, centered alignment).
