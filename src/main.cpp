@@ -221,7 +221,11 @@ void loop() {
 void startAPMode() {
   Serial.println("Starting AP Mode");
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP("ODROID-GO-Monitor");
+  if (apPassword.length() >= 8) {
+    WiFi.softAP(apSSID.c_str(), apPassword.c_str());
+  } else {
+    WiFi.softAP(apSSID.c_str());
+  }
   currentState = STATE_AP_MODE;
   drawStatusBar();
 
@@ -240,7 +244,11 @@ void connectToWiFi() {
 void setupAP() {
   currentState = STATE_AP_MODE;
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID);
+  if (apPassword.length() >= 8) {
+    WiFi.softAP(apSSID.c_str(), apPassword.c_str());
+  } else {
+    WiFi.softAP(apSSID.c_str());
+  }
 
   Serial.println("Starting AP Mode");
   Serial.print("AP IP: ");

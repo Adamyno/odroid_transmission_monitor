@@ -3,6 +3,8 @@
 // Define globals
 String ssid = "";
 String password = "";
+String apSSID = "ODROID-GO";
+String apPassword = "";
 
 String transHost = "";
 int transPort = 9091;
@@ -26,6 +28,10 @@ void loadConfig() {
       transUser = doc["t_user"].as<String>();
       transPass = doc["t_pass"].as<String>();
     }
+    if (doc.containsKey("ap_ssid")) {
+      apSSID = doc["ap_ssid"].as<String>();
+      apPassword = doc["ap_password"].as<String>();
+    }
     file.close();
     Serial.println("Config loaded.");
   }
@@ -40,6 +46,8 @@ void saveConfig() {
   doc["t_path"] = transPath;
   doc["t_user"] = transUser;
   doc["t_pass"] = transPass;
+  doc["ap_ssid"] = apSSID;
+  doc["ap_password"] = apPassword;
 
   File file = LittleFS.open(CONFIG_FILE, "w");
   serializeJson(doc, file);

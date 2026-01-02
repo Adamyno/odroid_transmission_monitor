@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.9] - 2026-01-02
+### Fixed
+- AP Mode: Resolved issue where custom SSID/Password settings were persistent in config but not actually used when starting the Access Point. 
+- Web UI: Fixed a CSS bug on the Status page where the middle bar of the signal icon was grey instead of cyan in the -60 to -69 dBm range.
+
+## [1.3.8] - 2026-01-02
+### Added
+- Settings: AP Mode Config card to customize Access Point SSID and Password.
+- WiFi Scan: Signal strength bars (4-level icon) in AP mode network list.
+- Battery: Now displayed in both AP and STA modes.
+### Fixed
+- Signal Strength Icon: Corrected boundary conditions (`>=` instead of `>`) for accurate icon display at -60, -70, -80 dBm thresholds.
+- Button Feedback: Replaced `alert()` dialogs with inline visual feedback (encoding-safe) for Restart, Reset, and Save buttons.
+
 ## [1.3.7] - 2026-01-02
 ### Added
 - Transmission connection test: Integrated CSRF handling and real-time speed reporting (DL/UL).

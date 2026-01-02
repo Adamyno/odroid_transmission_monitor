@@ -2,18 +2,13 @@
 #include "battery_utils.h" // For battery voltage
 #include "config_utils.h"  // For ssid, password, etc.
 #include "web_pages.h"
+#include <HTTPClient.h>
+#include <Update.h>
 #include <WiFi.h>
 
 WebServer server(80);
 
-// Extern global variables from main.cpp? Or should we move them here?
-// ssid, password are used in main for connection.
-// Let's declare them extern here to update them from save.
-extern int otaProgress; // Still need this or move to display_utils handling?
-
-// Also functions to control transmission test
-
-#include <Update.h>
+extern int otaProgress;
 
 const char *update_html = R"(
 <!DOCTYPE html>
@@ -125,15 +120,28 @@ void handleUpdateMultipart() {
   }
 }
 
+// Forward declarations
+void handleRoot();
+void handleScanWifi();
+void handleScan();
+void handleSave();
+void handleReset();
+void handleRestart();
+void handleStatus();
+void handleGetParams();
+void handleSaveParams();
+void handleTestTransmission();
+
+// ...
 void setupServerRoutes() {
-  server.on("/", handleRoot);
-  server.on("/scan_wifi", handleScanWifi); // JSON handler
-  server.on("/scan", handleScan);          // HTML Page
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/scan_wifi", HTTP_GET, handleScanWifi); // JSON handler
+  server.on("/scan", HTTP_GET, handleScan);          // HTML Page
   server.on("/save", HTTP_POST, handleSave);
-  server.on("/reset", handleReset);
-  server.on("/restart", handleRestart);
-  server.on("/status", handleStatus);
-  server.on("/get_params", handleGetParams);
+  server.on("/reset", HTTP_POST, handleReset);
+  server.on("/restart", HTTP_POST, handleRestart);
+  server.on("/status", HTTP_GET, handleStatus);
+  server.on("/get_params", HTTP_GET, handleGetParams);
   server.on("/save_params", HTTP_POST, handleSaveParams);
   server.on("/test_transmission", HTTP_POST, handleTestTransmission);
 
@@ -167,34 +175,39 @@ void handleScanWifi() {
 }
 
 void handleRoot() {
-  if (WiFi.getMode() != WIFI_STA) {
-    server.send(200, "text/html", index_html);
+  // Fix 1: Add Cache-Control headers
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "-1");
+
+  String page = dashboard_html;
+
+  if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+    page.replace("%MODE%", "AP");
+    page.replace("%IP%", WiFi.softAPIP().toString());
   } else {
-    String page = dashboard_html;
+    page.replace("%MODE%", "STA");
     page.replace("%IP%", WiFi.localIP().toString());
-    page.replace("%SSID%", WiFi.SSID());
-    page.replace("%RSSI%", String(WiFi.RSSI()));
-    page.replace("%MAC%", WiFi.macAddress());
-    page.replace("%VERSION%", VERSION);
-    page.replace("%BUILD_DATE%", __DATE__ " " __TIME__);
-    server.send(200, "text/html", page);
   }
+
+  // Common Replacements
+  page.replace("%SSID%",
+               (WiFi.getMode() == WIFI_STA) ? WiFi.SSID() : "ODROID-AP");
+  page.replace("%RSSI%",
+               (WiFi.getMode() == WIFI_STA) ? String(WiFi.RSSI()) : "0");
+  page.replace("%MAC%", WiFi.macAddress());
+  page.replace("%VERSION%", VERSION);
+  page.replace("%BUILD_DATE%", __DATE__ " " __TIME__);
+
+  server.send(200, "text/html", page);
 }
 
+// /scan endpoint was previously serving index_html.
+// Since we unified the UI, we can redirect /scan to / or remove it.
+// However, to avoid broken links if any, let's redirect to root.
 void handleScan() {
-  String page = index_html;
-  String options = "";
-  int n = WiFi.scanNetworks();
-  if (n == 0) {
-    options += "<option>No networks found</option>";
-  } else {
-    for (int i = 0; i < n; ++i) {
-      options += "<option value='" + WiFi.SSID(i) + "'>" + WiFi.SSID(i) + " (" +
-                 String(WiFi.RSSI(i)) + " dBm)</option>";
-    }
-  }
-  page.replace("%OPTIONS%", options);
-  server.send(200, "text/html", page);
+  server.sendHeader("Location", "/", true);
+  server.send(302, "text/plain", "");
 }
 
 void handleSave() {
@@ -238,8 +251,6 @@ void handleStatus() {
   server.send(200, "application/json", json);
 }
 
-#include <HTTPClient.h>
-
 void handleGetParams() {
   DynamicJsonDocument doc(512);
   doc["host"] = transHost;
@@ -247,6 +258,8 @@ void handleGetParams() {
   doc["path"] = transPath;
   doc["user"] = transUser;
   doc["pass"] = transPass;
+  doc["ap_ssid"] = apSSID;
+  doc["ap_password"] = apPassword;
   String json;
   serializeJson(doc, json);
   server.send(200, "application/json", json);
@@ -263,6 +276,10 @@ void handleSaveParams() {
     transUser = server.arg("user");
   if (server.hasArg("pass"))
     transPass = server.arg("pass");
+  if (server.hasArg("ap_ssid"))
+    apSSID = server.arg("ap_ssid");
+  if (server.hasArg("ap_password"))
+    apPassword = server.arg("ap_password");
 
   saveConfig();
   server.send(200, "text/plain", "Saved params");
@@ -292,7 +309,7 @@ String testTransmission(const String &host, int port, const String &path,
     http.setAuthorization(user.c_str(), pass.c_str());
   http.addHeader("Content-Type", "application/json");
 
-  http.addHeader("Content-Type", "application/json");
+  // Fix 2: Removed duplicate header
 
   const char *headerKeys[] = {"X-Transmission-Session-Id", "Content-Length"};
   http.collectHeaders(headerKeys, 2);
@@ -324,13 +341,18 @@ String testTransmission(const String &host, int port, const String &path,
     DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, resp);
     if (!error) {
-      String status = doc["result"].as<String>();
-      if (status == "success") {
-        long dl = doc["arguments"]["downloadSpeed"];
-        long ul = doc["arguments"]["uploadSpeed"];
-        result = "Success! DL: " + formatSpeed(dl) + ", UL: " + formatSpeed(ul);
+      if (doc.containsKey("result")) {
+        String status = doc["result"].as<String>();
+        if (status == "success") {
+          long dl = doc["arguments"]["downloadSpeed"];
+          long ul = doc["arguments"]["uploadSpeed"];
+          result =
+              "Success! DL: " + formatSpeed(dl) + ", UL: " + formatSpeed(ul);
+        } else {
+          result = "RPC Error: " + status;
+        }
       } else {
-        result = "RPC Error: " + status;
+        result = "Invalid JSON structure";
       }
     } else {
       result = "JSON Error";

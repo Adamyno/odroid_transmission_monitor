@@ -9,6 +9,9 @@
 extern String ssid;
 extern String password;
 
+extern String apSSID;
+extern String apPassword;
+
 extern String transHost;
 extern int transPort;
 extern String transPath;
