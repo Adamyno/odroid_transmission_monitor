@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.3.6";
+const char *const VERSION = "1.3.7";
 
 // --- HTML Content ---
 
@@ -48,7 +48,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <script>
     function scanNetworks() {
       document.getElementById('networks').innerHTML = "Scanning...";
-      fetch('/scan').then(res => res.json()).then(data => {
+      fetch('/scan_wifi').then(res => res.json()).then(data => {
         let html = "<ul>";
         data.forEach(net => {
           let bars = 1;
@@ -311,7 +311,7 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     loadTrans(); // Load settings on startup
 
     function loadTrans() {
-      fetch('/getParams').then(res => res.json()).then(data => {
+      fetch('/get_params').then(res => res.json()).then(data => {
         document.getElementById('t_host').value = data.host || "";
         document.getElementById('t_port').value = data.port || "9091";
         document.getElementById('t_path').value = data.path || "/transmission/rpc";
@@ -328,7 +328,7 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       formData.append("user", document.getElementById('t_user').value);
       formData.append("pass", document.getElementById('t_pass').value);
 
-      fetch('/saveParams', { method: 'POST', body: formData })
+      fetch('/save_params', { method: 'POST', body: formData })
         .then(res => res.text())
         .then(msg => alert(msg))
         .catch(e => alert("Error saving"));
@@ -350,7 +350,7 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       formData.append("user", document.getElementById('t_user').value);
       formData.append("pass", document.getElementById('t_pass').value);
 
-      fetch('/testTransmission', { method: 'POST', body: formData })
+      fetch('/test_transmission', { method: 'POST', body: formData })
         .then(res => res.text())
         .then(msg => {
           if(msg.includes("Success")) {
@@ -377,27 +377,48 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       const fileInput = document.getElementById('firmware_file');
       if(fileInput.files.length === 0) return alert("Select file first!");
       
+      const file = fileInput.files[0];
       const formData = new FormData();
-      formData.append("update", fileInput.files[0]);
+      formData.append("update", file);
 
       const btn = document.getElementById('upload_btn');
       const oldText = btn.innerText;
-      btn.innerText = "Uploading...";
+      
       btn.disabled = true;
+      btn.style.backgroundColor = '#2980b9'; // Blue color
 
-      fetch('/update', { method: 'POST', body: formData })
-        .then(res => res.text())
-        .then(msg => {
-            alert(msg);
-            if(msg.includes("Success")) setTimeout(() => location.reload(), 5000);
-        })
-        .catch(e => {
-            alert("Upload failed: " + e);
-        })
-        .finally(() => {
-            btn.innerText = oldText;
-            btn.disabled = false;
-        });
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/update', true);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          btn.innerText = '[' + percent + '%] Uploading...';
+        }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const msg = xhr.responseText;
+          alert(msg);
+          if (msg.includes("Success")) setTimeout(() => location.reload(), 5000);
+        } else {
+          alert('Upload failed!');
+        }
+        // Cleanup
+        btn.innerText = oldText;
+        btn.disabled = false;
+        btn.style.backgroundColor = '#8e44ad'; // Restore original purple
+      };
+
+      xhr.onerror = function() {
+        alert('Network Error during upload');
+        btn.innerText = oldText;
+        btn.disabled = false;
+        btn.style.backgroundColor = '#8e44ad';
+      };
+
+      xhr.send(formData);
     }
 
     function restartDev() {

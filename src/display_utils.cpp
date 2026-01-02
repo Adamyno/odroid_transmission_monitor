@@ -1,4 +1,5 @@
 #include "display_utils.h"
+#include "battery_utils.h"
 
 // Tracking variables for differential updates
 static State lastState = (State)-1;
@@ -10,14 +11,18 @@ static float lastBattery = -1.0;
 #define STATUSBAR_BG 0x2104
 
 void drawStatusBar() {
+  // Serial.println("DSB: Start");
   // 1. Determine current values
   bool currentBlink = (millis() / 500) % 2 == 0;
   long currentRssi =
-      (currentState == STATE_CONNECTED || currentState == STATE_DHCP)
+      (currentState == STATE_CONNECTED || currentState == STATE_DHCP ||
+       currentState == STATE_MENU || currentState == STATE_ABOUT ||
+       currentState == STATE_SETTINGS || currentState == STATE_OTA)
           ? WiFi.RSSI()
           : 0;
   IPAddress currentIp;
-  if (currentState == STATE_CONNECTED)
+  if (currentState == STATE_CONNECTED || currentState == STATE_MENU ||
+      currentState == STATE_ABOUT || currentState == STATE_SETTINGS)
     currentIp = WiFi.localIP();
   else if (currentState == STATE_AP_MODE)
     currentIp = WiFi.softAPIP();
@@ -44,7 +49,8 @@ void drawStatusBar() {
 
   // 4. Update Icon area
   if (stateChanged || (currentState == STATE_CONNECTED && rssiChanged) ||
-      (currentState == STATE_CONNECTING && blinkChanged)) {
+      (currentState == STATE_CONNECTING && blinkChanged) ||
+      currentState == STATE_OTA) {
 
     // Clear only icon area if not already cleared by stateChanged
     if (!stateChanged) {
@@ -71,7 +77,12 @@ void drawStatusBar() {
   }
 
   // 4b. Update Battery area
-  float currentBattery = getBatteryVoltage();
+  float currentBattery = -1.0;
+  // Skip battery check during connection to avoid ADC/Power noise
+  if (currentState != STATE_CONNECTING && currentState != STATE_DHCP) {
+    currentBattery = getBatteryVoltage();
+  }
+
   bool batteryChanged = (abs(currentBattery - lastBattery) > 0.05);
 
   if (stateChanged || batteryChanged) {
@@ -135,6 +146,7 @@ void drawStatusBar() {
   lastBlinkState = currentBlink;
   lastBattery = currentBattery;
   lastOtaProgress = otaProgress;
+  // Serial.println("DSB: Done");
 }
 
 void drawBatteryIcon(int x, int y, float voltage) {
@@ -159,11 +171,6 @@ void drawBatteryIcon(int x, int y, float voltage) {
   if (w > 0) {
     tft.fillRect(x + 2, y + 4, w, 8, color);
   }
-}
-
-float getBatteryVoltage() {
-  int raw = analogRead(36);
-  return (raw / 4095.0) * 2.0 * 3.3;
 }
 
 void drawAPIcon(int x, int y) {

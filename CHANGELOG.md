@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.7] - 2026-01-02
+### Added
+- Transmission connection test: Integrated CSRF handling and real-time speed reporting (DL/UL).
+- Calibrated battery monitoring: Using factory eFuse calibration and 64x multi-sampling for stable readings.
+### Fixed
+- Web OTA: Improved reliability with response delays and fixed progress bar calculation using `Content-Length`.
+- Screen UI: Fixed WiFi signal icon visibility and activity during OTA updates.
+### Changed
+- Web Dashboard: Enhanced OTA UI with AJAX-based progress on the button and visual feedback (blue color).
+
 ## [1.3.6] - 2026-01-01
 ### Changed
 - WiFi Connection Logic: Removed physical LED blinking.

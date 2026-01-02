@@ -11,7 +11,10 @@ enum State {
   STATE_CONNECTING,
   STATE_DHCP,
   STATE_CONNECTED,
-  STATE_OTA
+  STATE_OTA,
+  STATE_MENU,
+  STATE_ABOUT,
+  STATE_SETTINGS
 };
 
 // --- External Globals ---
@@ -24,6 +27,5 @@ void drawStatusBar();
 void drawWifiIcon(int x, int y, long rssi);
 void drawAPIcon(int x, int y);
 void drawBatteryIcon(int x, int y, float voltage);
-float getBatteryVoltage();
 
 #endif
