@@ -200,7 +200,32 @@ void drawStatusBar() {
     tft.setCursor(dlTextX, Y + 4);
     tft.print(dlStr);
 
-    // 5.1 Turtle Icon for Alt-Speed Mode (to the left of download stats)
+    // 5.1 Free Space Display (to the left of download stats)
+    long long freeBytes = transmission.getFreeSpace();
+    if (freeBytes > 0) {
+      // Format as GB
+      int freeGB = freeBytes / 1073741824LL; // 1024^3
+      String freeStr = String(freeGB) + "G";
+      int freeTextW = tft.textWidth(freeStr);
+
+      cursorX -= (freeTextW + 16); // Text + icon + spacing
+      int fx = cursorX;
+      int fy = Y + 2;
+
+      // HDD Icon: Gray rectangle with disk inside
+      tft.fillRoundRect(fx, fy + 2, 12, 10, 1, TFT_DARKGREY);  // HDD body
+      tft.drawRoundRect(fx, fy + 2, 12, 10, 1, TFT_LIGHTGREY); // Border
+      tft.fillCircle(fx + 6, fy + 6, 3, TFT_LIGHTGREY);        // Disk platter
+      tft.fillCircle(fx + 6, fy + 6, 1, TFT_DARKGREY);         // Center hole
+      tft.fillRect(fx + 9, fy + 9, 2, 2, TFT_GREEN);           // Activity LED
+
+      // Free space text
+      tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+      tft.setCursor(fx + 14, Y + 4);
+      tft.print(freeStr);
+    }
+
+    // 5.2 Turtle Icon for Alt-Speed Mode (to the left of free space)
     if (transmission.isAltSpeedEnabled()) {
       cursorX -= 18; // Space for turtle icon
       int tx = cursorX;
@@ -211,9 +236,6 @@ void drawStatusBar() {
 #define TURTLE_BROWN 0xCC68 // Light brown-ish
       // Shell: Green
       // Head/Legs: Brown
-
-      // Move turtle down a bit to center vertically if we remove top legs
-      // Or just make shell bigger
 
       // Bigger Shell (12x9)
       tft.fillRoundRect(tx + 2, ty + 3, 12, 9, 4, TFT_GREEN);
@@ -228,31 +250,9 @@ void drawStatusBar() {
       // Eye (Black)
       tft.drawPixel(tx + 15, ty + 4, TFT_BLACK);
 
-      // Back Legs Only (Brown) - slightly larger maybe?
+      // Back Legs Only (Brown)
       tft.fillRect(tx + 3, ty + 11, 2, 3, TURTLE_BROWN);  // Back Left
       tft.fillRect(tx + 11, ty + 11, 2, 3, TURTLE_BROWN); // Back Right
-    }
-
-    // 5.2 Free Space Display (to the left of turtle/dl stats)
-    long long freeBytes = transmission.getFreeSpace();
-    if (freeBytes > 0) {
-      // Format as GB
-      int freeGB = freeBytes / 1073741824LL; // 1024^3
-      String freeStr = String(freeGB) + "G";
-      int freeTextW = tft.textWidth(freeStr);
-
-      cursorX -= (freeTextW + 14); // Text + icon + spacing
-      int fx = cursorX;
-      int fy = Y + 2;
-
-      // Small folder icon (simplified)
-      tft.fillRoundRect(fx, fy + 4, 10, 8, 1, TFT_YELLOW);
-      tft.fillRect(fx, fy + 2, 5, 3, TFT_YELLOW); // Tab
-
-      // Free space text
-      tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
-      tft.setCursor(fx + 12, Y + 4);
-      tft.print(freeStr);
     }
 
   } else if (transChanged && !transConnected) {

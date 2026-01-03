@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.1] - 2026-01-03
+### Changed
+- **Status Bar Layout**: Swapped positions of turtle icon and free space display for better visual flow.
+- **HDD Icon**: Replaced the yellow folder icon with a more detailed HDD icon (gray rectangle with disk platter and activity LED).
+
 ## [1.10.0] - 2026-01-03
 ### Added
 - **Free Space Display**: The status bar now shows the free disk space of the Transmission download directory (e.g., "123G") with a yellow folder icon.
