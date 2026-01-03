@@ -233,6 +233,28 @@ void drawStatusBar() {
       tft.fillRect(tx + 11, ty + 11, 2, 3, TURTLE_BROWN); // Back Right
     }
 
+    // 5.2 Free Space Display (to the left of turtle/dl stats)
+    long long freeBytes = transmission.getFreeSpace();
+    if (freeBytes > 0) {
+      // Format as GB
+      int freeGB = freeBytes / 1073741824LL; // 1024^3
+      String freeStr = String(freeGB) + "G";
+      int freeTextW = tft.textWidth(freeStr);
+
+      cursorX -= (freeTextW + 14); // Text + icon + spacing
+      int fx = cursorX;
+      int fy = Y + 2;
+
+      // Small folder icon (simplified)
+      tft.fillRoundRect(fx, fy + 4, 10, 8, 1, TFT_YELLOW);
+      tft.fillRect(fx, fy + 2, 5, 3, TFT_YELLOW); // Tab
+
+      // Free space text
+      tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+      tft.setCursor(fx + 12, Y + 4);
+      tft.print(freeStr);
+    }
+
   } else if (transChanged && !transConnected) {
     // Clear transmission area when disconnected
     // Fix: Clear up to cursorX to ensure no artifacts (like the 1px from UL

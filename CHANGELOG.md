@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.0] - 2026-01-03
+### Added
+- **Free Space Display**: The status bar now shows the free disk space of the Transmission download directory (e.g., "123G") with a yellow folder icon.
+
 ## [1.9.0] - 2026-01-03
 ### Changed
 - **Turtle Icon**: Enhanced the alt-speed turtle icon on the status bar. It is now green with shell details, a head with an eye, and four visible legs.

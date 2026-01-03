@@ -15,6 +15,7 @@ public:
   long getDownloadSpeed(); // Bytes/sec
   long getUploadSpeed();   // Bytes/sec
   bool isAltSpeedEnabled();
+  long long getFreeSpace(); // Bytes
   void toggleAltSpeed();
 
 private:
@@ -24,6 +25,7 @@ private:
   long _dlSpeed;
   long _ulSpeed;
   bool _altSpeedEnabled;
+  long long _freeSpace;
   String _sessionId;
 
   void fetchStats();

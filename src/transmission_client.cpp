@@ -9,6 +9,7 @@ TransmissionClient::TransmissionClient() {
   _dlSpeed = 0;
   _ulSpeed = 0;
   _altSpeedEnabled = false;
+  _freeSpace = 0;
   _sessionId = "";
 }
 
@@ -35,6 +36,8 @@ long TransmissionClient::getDownloadSpeed() { return _dlSpeed; }
 long TransmissionClient::getUploadSpeed() { return _ulSpeed; }
 
 bool TransmissionClient::isAltSpeedEnabled() { return _altSpeedEnabled; }
+
+long long TransmissionClient::getFreeSpace() { return _freeSpace; }
 
 void TransmissionClient::toggleAltSpeed() {
   if (transHost.length() == 0 || !_connected)
@@ -153,7 +156,7 @@ void TransmissionClient::fetchStats() {
     http.setTimeout(1500);
 
     String payload2 = "{\"method\":\"session-get\",\"arguments\":{\"fields\":["
-                      "\"alt-speed-enabled\"]}}";
+                      "\"alt-speed-enabled\",\"download-dir-free-space\"]}}";
     int code2 = http.POST(payload2);
 
     if (code2 == 200) {
@@ -162,6 +165,7 @@ void TransmissionClient::fetchStats() {
       DeserializationError err2 = deserializeJson(doc2, resp2);
       if (!err2 && doc2["result"] == "success") {
         _altSpeedEnabled = doc2["arguments"]["alt-speed-enabled"] | false;
+        _freeSpace = doc2["arguments"]["download-dir-free-space"] | 0LL;
       }
     }
 
