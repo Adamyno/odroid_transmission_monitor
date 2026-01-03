@@ -1,5 +1,6 @@
 #include "display_utils.h"
 #include "battery_utils.h"
+#include "transmission_client.h" // For stats
 
 // Tracking variables for differential updates
 static State lastState = (State)-1;
@@ -10,9 +11,39 @@ static float lastBattery = -1.0;
 
 #define STATUSBAR_BG 0x2104
 
+// Backlight Control
+#define BACKLIGHT_PIN 14
+#define PWM_CHANNEL 0
+#define PWM_FREQ 5000
+#define PWM_RESOLUTION 8
+
+void setupBacklight() {
+  ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(BACKLIGHT_PIN, PWM_CHANNEL);
+  // Default to max brightness (will be overwritten by config)
+  ledcWrite(PWM_CHANNEL, 255);
+}
+
+void setBrightness(int duty) {
+  if (duty < 0)
+    duty = 0;
+  if (duty > 255)
+    duty = 255;
+  ledcWrite(PWM_CHANNEL, duty);
+}
+
+// Helper for text width
+int getTextWidth(String text) { return tft.textWidth(text); }
+
+String formatSpeedShort(long bytes) {
+  if (bytes < 1024)
+    return String(bytes) + "B";
+  if (bytes < 1048576)
+    return String(bytes / 1024.0, 1) + "K";
+  return String(bytes / 1048576.0, 1) + "M";
+}
+
 void drawStatusBar() {
-  // Serial.println("DSB: Start");
-  // 1. Determine current values
   bool currentBlink = (millis() / 500) % 2 == 0;
   long currentRssi =
       (currentState == STATE_CONNECTED || currentState == STATE_DHCP ||
@@ -27,126 +58,169 @@ void drawStatusBar() {
   else if (currentState == STATE_AP_MODE)
     currentIp = WiFi.softAPIP();
 
-  // 2. Check for changes
   bool stateChanged = (currentState != lastState);
   bool rssiChanged = (currentRssi != lastRssi);
-  bool ipChanged = (currentIp != lastIp);
   bool blinkChanged = (currentBlink != lastBlinkState);
   static int lastOtaProgress = -1;
   bool otaChanged =
       (currentState == STATE_OTA && otaProgress != lastOtaProgress);
+  static bool lastTransConnected = false;
+  bool transConnected = transmission.isConnected();
+  bool transChanged = (transConnected != lastTransConnected);
+  static long lastDl = -1;
+  static long lastUl = -1;
+  long currentDl = transmission.getDownloadSpeed();
+  long currentUl = transmission.getUploadSpeed();
+  bool statsChanged = (currentDl != lastDl || currentUl != lastUl);
 
-  // Icon Positions (320px screen)
-  int battX = 295; // Battery on the far right
-  int iconX = 270; // Wifi next to it
-  int iconY = 4;
-  int battY = 4;
+  // Redraw if anything significant changed to ensure layout consistency
+  // Ideally we use a full redraw technique for the status bar because positions
+  // are dynamic now. To avoid flicker, we can fillRect only if needed, but
+  // since positions shift, we might need to clear chunks. For simplicity: If
+  // any layout-affecting validation changes, redraw the whole bar.
 
-  // 3. Update Background and Border if state changed
+  bool needsRedraw = stateChanged || rssiChanged ||
+                     (currentState == STATE_CONNECTING && blinkChanged) ||
+                     otaChanged || transChanged || statsChanged;
+
+  if (!needsRedraw)
+    return;
+
+  // Only clear the entire bar on major state changes
   if (stateChanged) {
     tft.fillRect(0, 0, 320, 24, STATUSBAR_BG);
   }
 
-  // 4. Update Icon area
-  if (stateChanged || (currentState == STATE_CONNECTED && rssiChanged) ||
-      (currentState == STATE_CONNECTING && blinkChanged) ||
-      currentState == STATE_OTA) {
+  int cursorX = 315; // Start from right edge with padding
+  int const Y = 4;
 
-    // Clear only icon area if not already cleared by stateChanged
-    if (!stateChanged) {
-      tft.fillRect(iconX, iconY, 24, 16, STATUSBAR_BG);
-    }
-
-    if (currentState == STATE_AP_MODE) {
-      drawAPIcon(iconX, iconY);
-    } else if (currentState == STATE_CONNECTING) {
-      // Grey icon for connecting
-      drawWifiIcon(iconX, iconY, -100); // -100 forces grey bars
-    } else if (currentState == STATE_DHCP) {
-      // Green icon for DHCP (we have connection, just no IP)
-      drawWifiIcon(iconX, iconY, currentRssi);
-    } else if (currentState == STATE_CONNECTED) {
-      drawWifiIcon(iconX, iconY, currentRssi);
-    } else if (currentState == STATE_OTA) {
-      if (currentBlink)
-        drawWifiIcon(iconX, iconY, currentRssi);
-    } else {
-      tft.drawLine(iconX, iconY, iconX + 15, iconY + 15, TFT_RED);
-      tft.drawLine(iconX + 15, iconY, iconX, iconY + 15, TFT_RED);
-    }
-  }
-
-  // 4b. Update Battery area
+  // 1. Battery Icon
+  // Size: 20px wide
+  cursorX -= 20;
   float currentBattery = -1.0;
-  // Skip battery check during connection to avoid ADC/Power noise
   if (currentState != STATE_CONNECTING && currentState != STATE_DHCP) {
     currentBattery = getBatteryVoltage();
   }
+  drawBatteryIcon(cursorX, Y, currentBattery);
 
-  bool batteryChanged = (abs(currentBattery - lastBattery) > 0.05);
+  // 2. Battery Percentage
+  // Size: Text Width
+  float pct = (currentBattery - 3.4) / (4.2 - 3.4);
+  if (pct < 0)
+    pct = 0;
+  if (pct > 1)
+    pct = 1;
+  String batStr = String((int)(pct * 100)) + "%";
+  int battTextW = tft.textWidth(batStr);
+  cursorX -= (battTextW + 3);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+  tft.setCursor(cursorX, Y + 4);
+  tft.print(batStr);
 
-  if (stateChanged || batteryChanged) {
-    if (!stateChanged) {
-      tft.fillRect(battX, battY, 22, 16, STATUSBAR_BG);
-    }
-    drawBatteryIcon(battX, battY, currentBattery);
+  // 3. WiFi Signal
+  // User wants this moved right as much as possible, so just small padding
+  cursorX -= (16 + 5); // Icon width 16 + 5 padding
+
+  // Logic from old drawWifiIcon
+  bool isAP = (WiFi.getMode() == WIFI_AP) || ((WiFi.getMode() == WIFI_AP_STA) &&
+                                              (WiFi.status() != WL_CONNECTED));
+  if (isAP) {
+    drawAPIcon(cursorX, Y);
+  } else if (currentState == STATE_CONNECTING) {
+    drawWifiIcon(cursorX, Y, -100);
+  } else if (currentState == STATE_DHCP || currentState == STATE_CONNECTED ||
+             currentState == STATE_MENU || currentState == STATE_ABOUT ||
+             currentState == STATE_SETTINGS) {
+    drawWifiIcon(cursorX, Y, currentRssi);
+  } else if (currentState == STATE_OTA) {
+    if (currentBlink)
+      drawWifiIcon(cursorX, Y, currentRssi);
+  } else {
+    // X
+    tft.drawLine(cursorX, Y, cursorX + 15, Y + 15, TFT_RED);
+    tft.drawLine(cursorX + 15, Y, cursorX, Y + 15, TFT_RED);
   }
 
-  // 5. Update IP Address / Status Text area
-  if (stateChanged || ipChanged || otaChanged) {
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+  // 4. Transmission Icon & Stats - ONLY when CONNECTED to server
+  if (transConnected &&
+      (currentState == STATE_CONNECTED || currentState == STATE_MENU ||
+       currentState == STATE_ABOUT || currentState == STATE_SETTINGS)) {
 
-    if (currentState == STATE_OTA) {
-      // Clear area
-      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
-      tft.setCursor(5, 4);
-      tft.print("OTA UPGRADE...");
-
-      // Simple Progress Bar: | [=====     ] |
-      int barX = 5;
-      int barY = 16;
-      int barW = 80;
-      int barH = 6;
-
-      tft.drawFastVLine(barX, barY - 1, barH + 2, TFT_WHITE); // Left |
-      tft.drawFastVLine(barX + barW + 2, barY - 1, barH + 2,
-                        TFT_WHITE); // Right |
-
-      int progressW = (otaProgress * barW) / 100;
-      tft.fillRect(barX + 2, barY, progressW, barH, TFT_GREEN);
-      tft.fillRect(barX + 2 + progressW, barY, barW - progressW, barH,
-                   TFT_BLACK);
-    } else if (currentState == STATE_CONNECTING) {
-      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
-      tft.setCursor(5, 4);
-      tft.print("Connecting:");
-      tft.setCursor(5, 14);
-      extern String ssid;
-      tft.print(ssid);
-    } else if (currentState == STATE_DHCP) {
-      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
-      tft.setCursor(5, 4);
-      tft.print("DHCP request...");
-    } else if (currentIp[0] == 0) {
-      tft.fillRect(5, 4, 150, 20, STATUSBAR_BG);
-    } else {
-      tft.setCursor(5, 4);
-      tft.printf("%d.%d  ", currentIp[0], currentIp[1]);
-
-      tft.setCursor(5, 14);
-      tft.printf("%d.%d  ", currentIp[2], currentIp[3]);
+    // Clear the transmission area if stats changed (to prevent ghosting)
+    if (statsChanged || transChanged) {
+      tft.fillRect(0, 0, cursorX - 5, 24, STATUSBAR_BG);
     }
+
+    // cursorX -= (16 + 5); // Icon is 16x16
+    // drawSmallTransmissionIcon(cursorX, Y, transConnected);
+
+    // 5. Speed Stats
+    // Layout: [DL Text][DL Arrow] [UL Text][UL Arrow] [WiFi]
+
+    // Add 3px padding from WiFi icon as requested
+    cursorX -= 3;
+
+    int slotWidth = 50; // Fixed width for each stat block to prevent jitter
+
+    // Upload Block
+    String ulStr = formatSpeedShort(currentUl);
+    int ulTextW = tft.textWidth(ulStr);
+
+    // Align right within slot
+    cursorX -= slotWidth;
+    int ulIconX = cursorX + slotWidth - 10; // Icon at far right of slot
+    int ulTextX = ulIconX - 2 - ulTextW;    // Text to left of icon
+
+    // Draw Upload Arrow (Red Up)
+    tft.fillTriangle(ulIconX, Y + 8, ulIconX + 8, Y + 8, ulIconX + 4, Y + 2,
+                     TFT_RED);
+    tft.fillRect(ulIconX + 3, Y + 8, 2, 4, TFT_RED);
+
+    tft.setCursor(ulTextX, Y + 4);
+    tft.print(ulStr);
+
+    // Download Block
+    String dlStr = formatSpeedShort(currentDl);
+    int dlTextW = tft.textWidth(dlStr);
+
+    // Align right within slot
+    cursorX -= slotWidth;
+    int dlIconX = cursorX + slotWidth - 10;
+    int dlTextX = dlIconX - 2 - dlTextW;
+
+    // Draw Download Arrow (Green Down)
+    tft.fillTriangle(dlIconX, Y + 6, dlIconX + 8, Y + 6, dlIconX + 4, Y + 12,
+                     TFT_GREEN);
+    tft.fillRect(dlIconX + 3, Y + 2, 2, 4, TFT_GREEN);
+
+    tft.setCursor(dlTextX, Y + 4);
+    tft.print(dlStr);
+
+  } else if (transChanged && !transConnected) {
+    // Clear transmission area when disconnected
+    tft.fillRect(0, 0, cursorX - 5, 24, STATUSBAR_BG);
   }
 
-  // 6. Store current state
+  // 6. Left side status text (Connecting etc/ OTA)
+  // Used if we have leftover space or high priority message
+  if (currentState == STATE_OTA) {
+    tft.setCursor(5, 4);
+    tft.print("OTA...");
+    // simplified bar
+  } else if (currentState == STATE_CONNECTING) {
+    tft.setCursor(5, 4);
+    tft.print("Connecting...");
+  }
+
   lastState = currentState;
   lastRssi = currentRssi;
-  lastIp = currentIp;
   lastBlinkState = currentBlink;
-  lastBattery = currentBattery;
   lastOtaProgress = otaProgress;
-  // Serial.println("DSB: Done");
+  lastTransConnected = transConnected;
+  lastDl = currentDl;
+  lastUl = currentUl;
+  lastBattery = currentBattery;
 }
 
 void drawBatteryIcon(int x, int y, float voltage) {
@@ -198,5 +272,65 @@ void drawWifiIcon(int x, int y, long rssi) {
     if (rssi == -100)
       color = 0x7BEF; // Custom Grey for connecting state
     tft.fillRect(x + (i * 4), y + (16 - h), 3, h, color);
+  }
+}
+
+void drawSmallTransmissionIcon(int x, int y, bool connected) {
+  uint16_t color = connected ? TFT_ORANGE : UI_GREY;
+  // Small T-Handle (Gearshift)
+  // |---|  (8px wide)
+  //   |
+  //   |
+  tft.fillRect(x + 4, y + 2, 8, 3, color);   // Handle
+  tft.drawFastVLine(x + 7, y + 2, 8, color); // Shaft
+  // Base
+  tft.fillRect(x + 5, y + 10, 5, 2, color);
+}
+
+void drawTransmissionStats(int x, int y, long dl, long ul) {
+  // DL: Green Down Arrow
+  tft.fillTriangle(x, y, x + 8, y, x + 4, y + 6, TFT_GREEN);
+  tft.fillRect(x + 3, y - 4, 2, 4, TFT_GREEN);
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+  tft.setCursor(x + 12, y - 4);
+  tft.print(formatSpeedShort(dl));
+
+  int dlWidth = 50; // Reserved width
+
+  // UL: Red Up Arrow
+  int ulX = x + dlWidth + 10;
+  tft.fillTriangle(ulX, y + 2, ulX + 8, y + 2, ulX + 4, y - 4, TFT_RED);
+  tft.fillRect(ulX + 3, y + 2, 2, 4, TFT_RED);
+
+  tft.setCursor(ulX + 12, y - 4);
+  tft.print(formatSpeedShort(ul));
+}
+
+void drawTransmissionIcon(int x, int y, bool connected) {
+  uint16_t color = connected ? 0xFD20 : 0x7BEF; // Orange-ish or Grey
+  uint16_t bg = UI_BG;
+
+  // Clear area (assuming 64x64)
+  tft.fillRect(x, y, 64, 64, bg);
+
+  // Draw T-Shaped Automatic Gearshift
+  int centerX = x + 32;
+  int centerY = y + 32;
+
+  // Handle (Top)
+  // Rounded Box form
+  tft.fillRoundRect(centerX - 20, centerY - 20, 40, 12, 4, color);
+
+  // Shaft
+  tft.fillRect(centerX - 4, centerY - 10, 8, 30, color);
+
+  // Base / Boot
+  tft.fillCircle(centerX, centerY + 20, 8, color);
+
+  // Highlight/Button on handle
+  if (connected) {
+    tft.fillRect(centerX - 18, centerY - 18, 5, 8, TFT_WHITE);
   }
 }

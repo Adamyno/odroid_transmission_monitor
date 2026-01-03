@@ -19,6 +19,8 @@ extern bool btnMenuPressed;
 extern bool btnSelectPressed;
 extern bool btnUpPressed;
 extern bool btnDownPressed;
+extern bool btnLeftPressed;
+extern bool btnRightPressed;
 extern bool btnAPressed;
 extern bool btnBPressed;
 

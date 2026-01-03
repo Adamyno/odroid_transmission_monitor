@@ -19,6 +19,9 @@ void handleRestart();
 void handleStatus();
 void handleGetParams();
 void handleSaveParams();
+void handleSaveParams();
 void handleTestTransmission();
+String testTransmission(const String &host, int port, const String &path,
+                        const String &user, const String &pass);
 
 #endif

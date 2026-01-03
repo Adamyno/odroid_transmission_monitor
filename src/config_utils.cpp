@@ -12,6 +12,8 @@ String transPath = "/transmission/rpc";
 String transUser = "";
 String transPass = "";
 
+int brightness = 255; // Default max
+
 const char *CONFIG_FILE = "/config.json";
 
 void loadConfig() {
@@ -32,6 +34,9 @@ void loadConfig() {
       apSSID = doc["ap_ssid"].as<String>();
       apPassword = doc["ap_password"].as<String>();
     }
+    if (doc.containsKey("brightness")) {
+      brightness = doc["brightness"] | 255;
+    }
     file.close();
     Serial.println("Config loaded.");
   }
@@ -48,6 +53,7 @@ void saveConfig() {
   doc["t_pass"] = transPass;
   doc["ap_ssid"] = apSSID;
   doc["ap_password"] = apPassword;
+  doc["brightness"] = brightness;
 
   File file = LittleFS.open(CONFIG_FILE, "w");
   serializeJson(doc, file);

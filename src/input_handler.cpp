@@ -4,12 +4,23 @@ bool btnMenuPressed = false;
 bool btnSelectPressed = false;
 bool btnUpPressed = false;
 bool btnDownPressed = false;
+bool btnLeftPressed = false;
+bool btnRightPressed = false;
 bool btnAPressed = false;
 bool btnBPressed = false;
 
+// State tracking for edge detection
+static bool prevBtnMenu = true;
+static bool prevBtnSelect = true;
+static bool prevBtnA = true;
+static bool prevBtnB = true;
+static bool prevUp = false;
+static bool prevDown = false;
+static bool prevLeft = false;
+static bool prevRight = false;
+
 // Debounce handling
 unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 200;
 
 void setupInputs() {
   pinMode(BTN_MENU, INPUT_PULLUP);
@@ -17,10 +28,6 @@ void setupInputs() {
   pinMode(BTN_START, INPUT_PULLUP);
   pinMode(BTN_A, INPUT_PULLUP);
   pinMode(BTN_B, INPUT_PULLUP);
-  // Joypad usually requires analog read or specific pins, assuming digital for
-  // now if they are directional switches Actually ODROID-GO Joypad is analog on
-  // 34/35. For now effectively ignoring joypad or using just buttons if needed.
-  // Let's implement Menu (13) acting as a toggle.
 }
 
 void readInputs() {
@@ -29,39 +36,58 @@ void readInputs() {
   btnSelectPressed = false;
   btnUpPressed = false;
   btnDownPressed = false;
+  btnLeftPressed = false;
+  btnRightPressed = false;
   btnAPressed = false;
   btnBPressed = false;
 
-  // Global debounce/rate limiting
-  if (millis() - lastDebounceTime < 50) { // Check inputs at 20Hz
-    return;
-  }
+  // No global rate limiting - poll every loop
+  // Debouncing is handled by state logic or external timing if needed
+  // lastDebounceTime = millis();
 
-  if (digitalRead(BTN_MENU) == LOW) {
+  // --- Digital Buttons (Active LOW) ---
+  bool curMenu = digitalRead(BTN_MENU);
+  if (curMenu == LOW && prevBtnMenu == HIGH)
     btnMenuPressed = true;
-    lastDebounceTime = millis();
-  }
+  prevBtnMenu = curMenu;
 
-  // Joystick handling (Analog)
-  int joyY = analogRead(BTN_JOY_Y); // 0-4095
-  if (joyY < 1000) { // UP? or Down? verification needed. Usually 0 is one edge.
-    // Assuming 0 is Up
-    btnUpPressed = true;
-    lastDebounceTime = millis();
-  } else if (joyY > 3000) { // Down
-    btnDownPressed = true;
-    lastDebounceTime = millis();
-  }
-
-  // Select Button for "Enter"
-  if (digitalRead(BTN_SELECT) == LOW) {
+  bool curSelect = digitalRead(BTN_SELECT);
+  if (curSelect == LOW && prevBtnSelect == HIGH)
     btnSelectPressed = true;
-    lastDebounceTime = millis();
-  }
+  prevBtnSelect = curSelect;
 
-  // A Button also for "Enter"
-  if (digitalRead(BTN_A) == LOW) {
+  bool curA = digitalRead(BTN_A);
+  if (curA == LOW && prevBtnA == HIGH)
     btnAPressed = true;
-    lastDebounceTime = millis();
-  }
+  prevBtnA = curA;
+
+  bool curB = digitalRead(BTN_B);
+  if (curB == LOW && prevBtnB == HIGH)
+    btnBPressed = true;
+  prevBtnB = curB;
+
+  // --- Joystick handling (Analog) ---
+  int joyY = analogRead(BTN_JOY_Y);
+  bool curUp = (joyY > 3000);
+  bool curDown = (joyY > 1000 && joyY <= 3000);
+
+  if (curUp && !prevUp)
+    btnUpPressed = true;
+  if (curDown && !prevDown)
+    btnDownPressed = true;
+
+  prevUp = curUp;
+  prevDown = curDown;
+
+  int joyX = analogRead(BTN_JOY_X);
+  bool curLeft = (joyX > 3000);
+  bool curRight = (joyX > 1000 && joyX <= 3000);
+
+  if (curLeft && !prevLeft)
+    btnLeftPressed = true;
+  if (curRight && !prevRight)
+    btnRightPressed = true;
+
+  prevLeft = curLeft;
+  prevRight = curRight;
 }

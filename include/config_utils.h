@@ -18,6 +18,8 @@ extern String transPath;
 extern String transUser;
 extern String transPass;
 
+extern int brightness;
+
 // Functions
 void loadConfig();
 void saveConfig();

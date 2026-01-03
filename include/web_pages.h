@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.3.9";
+const char *const VERSION = "1.7.9";
 
 // --- HTML Content ---
 
@@ -134,6 +134,8 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       <div class="card">
         <h3>WiFi Configuration</h3>
         <div class="stat"><div class="label">AP IP Address</div><div class="value">%IP%</div></div>
+        <div class="stat"><div class="label">Current SSID</div><div class="value" id="ap-status-ssid">--</div></div>
+        <div class="stat"><div class="label">Current Password</div><div class="value" id="ap-status-pass">--</div></div>
         <button class="action-btn" onclick="scanNetworks()" style="width:100%; margin-bottom:10px;">Scan Networks</button>
         <div id="networks"></div>
         <br>
@@ -143,6 +145,7 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
       </div>
       <div class="button-row">
         <button class="action-btn restart" onclick="restartDev()">Restart</button>
+        <button class="action-btn reset" onclick="resetConfig()">Reset</button>
       </div>
     </div>
 
@@ -150,11 +153,23 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
 
   <!-- SETTINGS TAB -->
   <div id="Settings" class="tab-content">
-    <div class="card">
+    <div class="card" id="settings-ap-config" style="display:none;">
       <h3>AP Mode Config</h3>
       <input type="text" id="ap_ssid" placeholder="AP SSID (e.g. ODROID-GO)">
       <input type="password" id="ap_pass" placeholder="AP Password (min 8 chars)">
       <button class="action-btn" onclick="saveAP()" style="width:100%; margin-top:10px;">Save AP Settings</button>
+    </div>
+
+    <div class="card">
+      <h3>Display Settings</h3>
+      <div class="stat">
+        <div class="label">Brightness</div>
+        <div style="display:flex; align-items:center;">
+          <input type="range" id="brightness" min="10" max="255" value="255" oninput="updateBrightness(this.value)" style="flex-grow:1; margin-right:10px;">
+          <span id="brightness-val" class="value">100%</span>
+        </div>
+      </div>
+      <button class="action-btn" onclick="saveDisplay()" style="width:100%; margin-top:10px;">Save Display</button>
     </div>
 
     <div class="card">
@@ -183,12 +198,13 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
   <div id="About" class="tab-content">
     <div class="card">
       <h3>About Device</h3>
-      <div class="stat"><div class="label">Software</div><div class="value">Odroid Transmission Remote Monitor</div></div>
-      <div class="stat"><div class="label">Version</div><div class="value">%VERSION%</div></div>
-      <div class="stat"><div class="label">Developer</div><div class="value">Adam Pretz</div></div>
+      <div class="stat"><div class="label">Firmware Version</div><div class="value">%VERSION%</div></div>
       <div class="stat"><div class="label">Build Date</div><div class="value">%BUILD_DATE%</div></div>
+      <div class="stat"><div class="label">Project</div><div class="value"><a href="https://github.com/Adamyno/odroid_transmission_monitor" target="_blank" style="color:#00dbde; text-decoration:none;">GitHub</a></div></div>
+      <br>
+      <p style="color:#aaa; font-size:0.9em;">Transmission Monitor for ODROID-GO<br>Created by Adamyno</p>
     </div>
-  </div>
+
 
   <script>
     const SYSTEM_MODE = "%MODE%"; // "AP" or "STA"
@@ -196,20 +212,26 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     function init() {
       console.log("Init Mode:", SYSTEM_MODE);
       try {
+        var apStatus = document.getElementById('ap-config');
+        var staStatus = document.getElementById('station-status');
+        var apSettings = document.getElementById('settings-ap-config');
+
         if(SYSTEM_MODE === "AP") {
-            var ap = document.getElementById('ap-config');
-            var sta = document.getElementById('station-status');
-            if(ap) ap.style.display = 'block';
-            if(sta) sta.style.display = 'none';
+            // AP Mode: Show AP Status, Hide STA Status, Show AP Settings
+            if(apStatus) apStatus.style.display = 'block';
+            if(staStatus) staStatus.style.display = 'none';
+            if(apSettings) apSettings.style.display = 'block';
         } else {
-            var ap = document.getElementById('ap-config');
-            var sta = document.getElementById('station-status');
-            if(ap) ap.style.display = 'none';
-            if(sta) sta.style.display = 'block';
-            
-            setInterval(updateSignal, 2000);
-            updateSignal();
+            // STA Mode: Hide AP Status, Show STA Status, Hide AP Settings
+            if(apStatus) apStatus.style.display = 'none';
+            if(staStatus) staStatus.style.display = 'block';
+            if(apSettings) apSettings.style.display = 'none';
         }
+
+        
+        // Start updates for both modes
+        setInterval(updateSignal, 2000);
+        updateSignal();
         // Always update battery in both modes
         setInterval(updateBattery, 5000);
         updateBattery();
@@ -317,7 +339,10 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
     function updateSignal() {
         fetch('/status').then(function(r) { return r.json(); }).then(function(data) {
             // Signal
-            if(data.rssi) {
+            if(data.mode === "AP") {
+                if(document.getElementById('ap-status-ssid')) document.getElementById('ap-status-ssid').innerText = data.ap_ssid;
+                if(document.getElementById('ap-status-pass')) document.getElementById('ap-status-pass').innerText = (data.ap_password && data.ap_password.length > 0) ? data.ap_password : "(Open)";
+            } else if(data.rssi) {
                 var val = document.getElementById('rssi-val');
                 var icon = document.getElementById('wifi-icon');
                 if(val) val.innerText = data.rssi;
@@ -362,7 +387,53 @@ const char dashboard_html[] PROGMEM = R"rawliteral(
         
         if(document.getElementById('ap_ssid')) document.getElementById('ap_ssid').value = data.ap_ssid || "";
         if(document.getElementById('ap_pass')) document.getElementById('ap_pass').value = data.ap_password || "";
+        
+        if(document.getElementById('brightness')) {
+            var br = data.brightness || 255;
+            document.getElementById('brightness').value = br;
+            var pct = Math.round((br / 255) * 100);
+            document.getElementById('brightness-val').innerText = pct + '%';
+        }
       }).catch(function(e) { console.log("No params loaded"); });
+    }
+
+    function updateBrightness(val) {
+        var pct = Math.round((val / 255) * 100);
+        document.getElementById('brightness-val').innerText = pct + '%';
+    }
+
+    function saveDisplay() {
+      var btn = event.target;
+      var oldText = btn.innerText;
+      btn.innerText = "Saving...";
+      btn.disabled = true;
+      btn.style.opacity = "0.7";
+
+      var params = new URLSearchParams();
+      params.append("brightness", document.getElementById('brightness').value);
+
+      fetch('/save_params', { method: 'POST', body: params })
+        .then(function(res) { return res.text(); })
+        .then(function(msg) {
+          btn.innerText = msg;
+          btn.style.background = "#27ae60";
+          setTimeout(function() { 
+            btn.innerText = oldText;
+            btn.style.background = "";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+          }, 2000);
+        })
+        .catch(function(e) {
+          btn.innerText = "Error!";
+          btn.style.background = "#e74c3c";
+          setTimeout(function() { 
+            btn.innerText = oldText;
+            btn.style.background = "";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+          }, 2000);
+        });
     }
 
     function saveAP() {

@@ -14,12 +14,13 @@
 #include "display_utils.h"
 #include "gui_handler.h"
 #include "input_handler.h"
+#include "transmission_client.h"
 #include "web_pages.h"
 #include "web_server.h"
 
 // --- Configuration ---
 // VERSION is in web_pages.h
-const char *const BUILD_DATE = "2026. jan. 01.";
+const char *const BUILD_DATE = __DATE__ " " __TIME__;
 const char *AP_SSID = "ODROID-GO_Config";
 // CONFIG_FILE is in config_utils.cpp
 
@@ -30,17 +31,27 @@ TFT_eSPI tft = TFT_eSPI();
 
 State currentState = STATE_AP_MODE;
 int otaProgress = 0;
+unsigned long connectionStartTime = 0;
 
 // --- Function Prototypes ---
 void loadConfig();
 void saveConfig();
 
+void checkWiFiConnection(); // Helper for reconnection logic
+
 void deleteConfig();
-void setupAP(); // This will be replaced by startAPMode, but keeping for now as
-                // it's called in setupServerRoutes
+void setupAP(); // This will be replaced by startAPMode
 void startAPMode();
 void connectToWiFi();
-// setupServerRoutes and handlers are now in web_server.cpp
+
+TaskHandle_t transmissionTask;
+
+void transmissionTaskLoop(void *pvParameters) {
+  for (;;) {
+    transmission.update();
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Small delay to yield
+  }
+}
 
 // --- Setup ---
 void setup() {
@@ -48,8 +59,19 @@ void setup() {
   Serial.begin(115200);
   Serial.println("BOOT: Starting Full Firmware...");
 
-  setupInputs();  // Initialize buttons
-  setupBattery(); // Initialize ADC
+  // Launch Transmission Task on Core 0
+  xTaskCreatePinnedToCore(
+      transmissionTaskLoop, /* Function to implement the task */
+      "TransmissionTask",   /* Name of the task */
+      10000,                /* Stack size in words */
+      NULL,                 /* Task input parameter */
+      1,                    /* Priority of the task */
+      &transmissionTask,    /* Task handle. */
+      0);                   /* Core where the task should run */
+
+  setupInputs();    // Initialize buttons
+  setupBattery();   // Initialize ADC
+  setupBacklight(); // Initialize PWM for backlight
 
   tft.init();
   tft.setRotation(3);
@@ -113,9 +135,14 @@ void setup() {
 
 // --- Loop ---
 void loop() {
-  // --- Main Loop Logic ---
-  // 1. WiFi Status Management
   static unsigned long dhcpStartTime = 0;
+  static unsigned long lastStatusUpdate = 0;
+
+  // Periodic Status Bar Update
+  if (millis() - lastStatusUpdate > 2000) {
+    drawStatusBar();
+    lastStatusUpdate = millis();
+  }
 
   if (currentState == STATE_CONNECTING) {
     if (WiFi.status() == WL_CONNECTED) {
@@ -123,9 +150,11 @@ void loop() {
       currentState = STATE_DHCP;
       dhcpStartTime = millis();
       drawStatusBar();
-    } else if (WiFi.status() == WL_CONNECT_FAILED ||
-               WiFi.status() == WL_NO_SSID_AVAIL) {
-      // Automatic retry handled by ESP32, but we could timeout here
+    } else {
+      if (millis() - connectionStartTime > 20000) { // 20s Timeout
+        Serial.println("Connection Timeout! Switching to AP Mode.");
+        startAPMode();
+      }
     }
   }
 
@@ -134,6 +163,7 @@ void loop() {
       Serial.println("IP Obtained!");
       currentState = STATE_CONNECTED;
       drawStatusBar();
+      drawDashboard();
     } else {
       if (millis() - dhcpStartTime > 30000) {
         Serial.println("DHCP Timeout! Switching to AP Mode.");
@@ -142,78 +172,140 @@ void loop() {
     }
   }
 
-  if (currentState == STATE_CONNECTED) {
-    if (WiFi.status() != WL_CONNECTED) {
-      currentState = STATE_CONNECTING;
-      drawStatusBar();
-    }
+  // Check connection status periodically (unless in AP mode or OTA)
+  if (currentState != STATE_AP_MODE && currentState != STATE_OTA &&
+      currentState != STATE_DHCP) {
+    checkWiFiConnection();
   }
 
-  if (currentState == STATE_AP_MODE || currentState == STATE_CONNECTED) {
+  if (currentState == STATE_AP_MODE || currentState == STATE_CONNECTED ||
+      currentState == STATE_MENU || currentState == STATE_ABOUT ||
+      currentState == STATE_SETTINGS) {
     server.handleClient();
   }
 
   if (currentState == STATE_AP_MODE || currentState == STATE_CONNECTED ||
-      currentState == STATE_OTA) {
+      currentState == STATE_OTA || currentState == STATE_MENU ||
+      currentState == STATE_ABOUT || currentState == STATE_SETTINGS) {
     ArduinoOTA.handle();
   }
+
+  // Web Server Handle
+  server.handleClient();
+
+  // Real-time updates now handled in task
+  // transmission.update();
 
   // --- Input & GUI Handling ---
   readInputs();
 
+  // Menu toggle
   if (btnMenuPressed) {
-    if (currentState == STATE_MENU) {
-      // Exit Menu
+    if (currentState == STATE_MENU || currentState == STATE_ABOUT ||
+        currentState == STATE_SETTINGS) {
+      // Exit tabbed interface
       if (WiFi.status() == WL_CONNECTED)
         currentState = STATE_CONNECTED;
       else
         currentState = STATE_AP_MODE;
       drawStatusBar();
+      drawDashboard();
     } else {
+      // Enter tabbed interface
+      menuIndex = 0;
       currentState = STATE_MENU;
-      drawMenu();
+      drawStatus();
     }
   }
 
-  // Menu Navigation
-  if (currentState == STATE_MENU) {
-    if (btnUpPressed) {
-      Serial.println("UP");
-      menuUp();
-    }
-    if (btnDownPressed) {
-      Serial.println("DOWN");
-      menuDown();
-    }
-    if (btnAPressed || btnSelectPressed) {
-      Serial.println("SELECT");
-      // Handle selection
-      // menuIndex is extern from gui_handler.h
-      if (menuIndex == 0) { // Status (Connected View)
-        Serial.println("Selected Status (No-op)");
-      } else if (menuIndex == 1) { // Settings
-        currentState = STATE_SETTINGS;
-        drawSettings();
-      } else if (menuIndex == 2) { // About
-        currentState = STATE_ABOUT;
-        drawAbout();
+  // Tab navigation
+  if (currentState == STATE_MENU || currentState == STATE_ABOUT ||
+      currentState == STATE_SETTINGS) {
+
+    // Pass input to settings page if active
+    bool processed = false; // Flag to indicate if input was handled by settings
+    if (currentState == STATE_SETTINGS) {
+      if (btnUpPressed || btnDownPressed || btnLeftPressed || btnRightPressed ||
+          btnAPressed || btnBPressed) {
+        // If handleSettingsInput returns true, it handled the input (e.g.
+        // brightness adj). If false (inactive state), allowed to fall through
+        // to Tab Switch.
+        if (handleSettingsInput(btnUpPressed, btnDownPressed, btnLeftPressed,
+                                btnRightPressed, btnAPressed, btnBPressed)) {
+          // Handled, do not process tab switch
+          processed = true;
+        }
       }
     }
-  } else if (currentState == STATE_ABOUT || currentState == STATE_SETTINGS) {
-    if (btnMenuPressed || btnBPressed) {
-      currentState = STATE_MENU;
-      drawMenu();
+
+    // Normal Tab Switch Logic (if not processed by Settings)
+    if (!processed) {
+      bool tabChanged = false;
+      if (btnLeftPressed && menuIndex > 0) {
+        menuIndex--;
+        tabChanged = true;
+      }
+      if (btnRightPressed && menuIndex < 2) {
+        menuIndex++;
+        tabChanged = true;
+      }
+
+      if (tabChanged) {
+        if (menuIndex == 0) {
+          currentState = STATE_MENU;
+          drawStatus();
+        } else if (menuIndex == 1) {
+          currentState = STATE_SETTINGS;
+          resetSettingsMenu(); // Reset to inactive state on entry
+          drawSettings();
+        } else if (menuIndex == 2) {
+          currentState = STATE_ABOUT;
+          drawAbout();
+        }
+      }
+    }
+
+    // B button also exits (Global back)
+    if (btnBPressed &&
+        currentState != STATE_SETTINGS) { // Allow B in Settings for Test? No, A
+                                          // for Test. B for Back?
+      if (WiFi.status() == WL_CONNECTED)
+        currentState = STATE_CONNECTED;
+      else
+        currentState = STATE_AP_MODE;
+      drawStatusBar();
+      drawDashboard();
+    }
+    // Handle B in settings explicitly?
+    if (btnBPressed && currentState == STATE_SETTINGS) {
+      // Go back to Dashboard
+      if (WiFi.status() == WL_CONNECTED)
+        currentState = STATE_CONNECTED;
+      else
+        currentState = STATE_AP_MODE;
+      drawStatusBar();
+      drawDashboard();
     }
   }
 
-  // Update Status Bar (throttled to avoid WDT / heavy bus usage)
+  // Update Status Bar throttled
   static unsigned long lastDrawTime = 0;
+  static unsigned long lastTabUpdate = 0;
+
   if (millis() - lastDrawTime > 250) {
     drawStatusBar();
     lastDrawTime = millis();
   }
 
-  delay(10); // Yield to system/WDT
+  // Periodic Tab Refresh (e.g. for live Status updates)
+  if (millis() - lastTabUpdate > 5000) {
+    if (currentState == STATE_MENU) {
+      updateStatusValues(); // Partial update to prevent flickering
+    }
+    lastTabUpdate = millis();
+  }
+
+  delay(10);
 }
 
 // --- Implementation ---
@@ -228,8 +320,8 @@ void startAPMode() {
   }
   currentState = STATE_AP_MODE;
   drawStatusBar();
+  drawDashboard();
 
-  // Show Setup Page
   handleScan();
 }
 
@@ -238,6 +330,7 @@ void connectToWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid.c_str(), password.c_str());
   currentState = STATE_CONNECTING;
+  connectionStartTime = millis();
   drawStatusBar();
 }
 
@@ -249,14 +342,21 @@ void setupAP() {
   } else {
     WiFi.softAP(apSSID.c_str());
   }
-
-  Serial.println("Starting AP Mode");
-  Serial.print("AP IP: ");
-  Serial.println(WiFi.softAPIP());
-
-  tft.fillRect(0, 25, 320, 215, TFT_BLUE);
   drawStatusBar();
 }
 
-// Helper to get back to main (removed huge server block)
-// Moved all handlers to web_server.cpp
+void checkWiFiConnection() {
+  static unsigned long lastCheck = 0;
+  if (millis() - lastCheck > 5000) {
+    lastCheck = millis();
+    if (WiFi.status() != WL_CONNECTED && currentState != STATE_CONNECTING) {
+      Serial.println("WiFi Check: Not Connected. Reconnecting...");
+      WiFi.disconnect();
+      WiFi.begin(ssid.c_str(), password.c_str());
+      if (currentState == STATE_CONNECTED) {
+        currentState = STATE_CONNECTING;
+        drawStatusBar();
+      }
+    }
+  }
+}

@@ -239,9 +239,25 @@ void handleRestart() {
 }
 
 void handleStatus() {
-  DynamicJsonDocument doc(256); // Increased size for battery info
+  DynamicJsonDocument doc(512); // Increased size
   doc["rssi"] = WiFi.RSSI();
   doc["ip"] = WiFi.localIP().toString();
+
+  // Prioritize "STA" mode if connected, even if AP is running in background
+  // (WIFI_AP_STA)
+  bool isAPMode =
+      (WiFi.getMode() == WIFI_AP) ||
+      ((WiFi.getMode() == WIFI_AP_STA) && (WiFi.status() != WL_CONNECTED));
+
+  if (isAPMode) {
+    doc["mode"] = "AP";
+    doc["ap_ssid"] = apSSID;
+    doc["ap_password"] = apPassword;
+    doc["ip"] = WiFi.softAPIP().toString(); // Correct IP for AP mode
+  } else {
+    doc["mode"] = "STA";
+  }
+
   // Battery
   float battV = getBatteryVoltage();
   doc["batt"] = battV;
@@ -260,6 +276,7 @@ void handleGetParams() {
   doc["pass"] = transPass;
   doc["ap_ssid"] = apSSID;
   doc["ap_password"] = apPassword;
+  doc["brightness"] = brightness;
   String json;
   serializeJson(doc, json);
   server.send(200, "application/json", json);
@@ -276,13 +293,39 @@ void handleSaveParams() {
     transUser = server.arg("user");
   if (server.hasArg("pass"))
     transPass = server.arg("pass");
-  if (server.hasArg("ap_ssid"))
-    apSSID = server.arg("ap_ssid");
-  if (server.hasArg("ap_password"))
-    apPassword = server.arg("ap_password");
+  bool apChanged = false;
+  if (server.hasArg("ap_ssid")) {
+    String newApSSID = server.arg("ap_ssid");
+    if (newApSSID != apSSID) {
+      apSSID = newApSSID;
+      apChanged = true;
+    }
+  }
+  if (server.hasArg("ap_password")) {
+    String newApPass = server.arg("ap_password");
+    if (newApPass != apPassword) {
+      apPassword = newApPass;
+      apChanged = true;
+    }
+  }
+  if (server.hasArg("brightness")) {
+    brightness = server.arg("brightness").toInt();
+    setBrightness(brightness);
+  }
 
   saveConfig();
   server.send(200, "text/plain", "Saved params");
+  delay(100); // Give time for response to flush
+
+  // Apply AP changes immediately if in AP or AP_STA mode
+  if (apChanged) {
+    if (apPassword.length() >= 8) {
+      WiFi.softAP(apSSID.c_str(), apPassword.c_str());
+    } else {
+      WiFi.softAP(apSSID.c_str());
+    }
+    Serial.println("AP Settings updated via WebUI");
+  }
 }
 
 String formatSpeed(long bytes) {

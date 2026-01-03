@@ -7,7 +7,13 @@
 void drawMenu();
 void drawAbout();
 void drawSettings();
-void drawStatus(); // For the detailed status page if distinct from dashboard
+void drawStatus();
+void updateStatusValues();
+void drawTabBar(int activeTab);
+void drawDashboard();
+bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
+                         bool b);
+void resetSettingsMenu();
 
 // Navigation
 void menuUp();
@@ -17,5 +23,6 @@ void menuBack();
 
 extern TFT_eSPI tft; // Reuse the tft object
 extern int menuIndex;
+extern const char *const BUILD_DATE;
 
 #endif
