@@ -24,5 +24,6 @@ extern int brightness;
 void loadConfig();
 void saveConfig();
 void deleteConfig();
+void factoryReset();
 
 #endif

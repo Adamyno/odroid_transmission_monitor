@@ -150,8 +150,9 @@ void drawAbout() {
 }
 
 // Globals for Settings State
-int settingsIndex = -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test/Save row
-const int settingsCount = 4; // Brightness, Host, Port, Test/Save (same row)
+int settingsIndex =
+    -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test/Save, 4=Reset
+const int settingsCount = 5; // Brightness, Host, Port, Test/Save, Factory Reset
 
 // Edit mode state
 int editMode = 0;             // 0=none, 1=editing IP, 2=editing Port
@@ -328,6 +329,20 @@ void drawSettings() {
                    saveSelected ? TFT_GREEN : UI_BG);
   tft.setCursor(saveX + 15, startY + 6);
   tft.print("Save");
+
+  // 5. Factory Reset Button (index 4)
+  startY += lineH + 5;
+  int resetW = 100;
+  bool resetSelected = (settingsIndex == 4);
+  if (resetSelected)
+    tft.fillRoundRect(startX, startY, resetW, btnH, 4, TFT_RED);
+  else
+    tft.drawRoundRect(startX, startY, resetW, btnH, 4, TFT_RED);
+
+  tft.setTextColor(resetSelected ? TFT_WHITE : TFT_RED,
+                   resetSelected ? TFT_RED : UI_BG);
+  tft.setCursor(startX + 10, startY + 6);
+  tft.print("Factory Reset");
 
   // Info at bottom
   tft.setTextColor(UI_GREY, UI_BG);
@@ -530,6 +545,17 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
         tft.print("Settings Saved!");
         update = true;
       }
+    }
+  } else if (settingsIndex == 4) { // Factory Reset
+    if (a) {
+      // Show confirmation
+      tft.fillRect(20, 200, 280, 20, UI_BG);
+      tft.setCursor(20, 200);
+      tft.setTextColor(TFT_RED, UI_BG);
+      tft.print("Resetting...");
+
+      // Call factory reset (will restart)
+      factoryReset();
     }
   }
 

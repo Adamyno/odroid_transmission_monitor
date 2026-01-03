@@ -61,3 +61,25 @@ void saveConfig() {
 }
 
 void deleteConfig() { LittleFS.remove(CONFIG_FILE); }
+
+void factoryReset() {
+  // Set defaults
+  ssid = "";
+  password = "";
+  apSSID = "ODROID-GO";
+  apPassword = "";
+  transHost = "192.168.0.100";
+  transPort = 9091;
+  transPath = "/transmission/rpc";
+  transUser = "";
+  transPass = "";
+  brightness = 255;
+
+  // Delete config file
+  deleteConfig();
+
+  // Restart to AP mode
+  Serial.println("Factory reset! Restarting...");
+  delay(500);
+  ESP.restart();
+}

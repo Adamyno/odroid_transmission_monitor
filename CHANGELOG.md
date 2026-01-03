@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0] - 2026-01-03
+### Added
+- **Factory Reset Button**: New red button on Settings page that clears all settings (WiFi, Transmission config) and restarts in AP mode.
+- **Default Values**: After factory reset, defaults are:
+  - Trans Host: 192.168.0.100
+  - Trans Port: 9091
+  - Trans Path: /transmission/rpc
+
 ## [1.11.1] - 2026-01-03
 ### Fixed
 - **Temp Value Display**: After exiting edit mode, the edited (unsaved) values are now shown instead of reverting to saved values.
