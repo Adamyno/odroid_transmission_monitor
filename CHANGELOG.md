@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.3] - 2026-01-03
+### Changed
+- **Battery Position**: Moved battery percentage 5px closer to the battery icon.
+- **Battery Averaging**: Battery voltage is now sampled continuously and averaged, with display updates every 2 seconds only if the percentage changes.
+
 ## [1.10.2] - 2026-01-03
 ### Fixed
 - **Status Bar Smearing**: Fixed icon/text smearing when battery percentage changes (e.g., 99% to 100%). The status bar now fully redraws on any value change to prevent artifacts from position shifts.

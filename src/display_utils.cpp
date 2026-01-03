@@ -94,7 +94,7 @@ void drawStatusBar() {
   // what changes)
   int const Y = 4;
   int const BATT_ICON_X = 295; // Battery icon (20px wide)
-  int const BATT_PCT_X = 260;  // Battery % (fixed 35px slot for "100%")
+  int const BATT_PCT_X = 265;  // Battery % (moved 5px right, closer to icon)
   int const WIFI_ICON_X = 240; // WiFi icon (16px wide)
   // Transmission area: 0 to WIFI_ICON_X - 5
 
@@ -103,26 +103,52 @@ void drawStatusBar() {
     tft.fillRect(0, 0, 320, 24, STATUSBAR_BG);
   }
 
-  // 1. Battery Icon (fixed position)
+  // Battery averaging: sample every call, update display every 2 seconds
+  static float batterySum = 0;
+  static int batterySamples = 0;
+  static unsigned long lastBatteryUpdate = 0;
+  static int lastDisplayedPct = -1;
+
+  // 1. Battery Icon & Percentage
   float currentBattery = -1.0;
   if (currentState != STATE_CONNECTING && currentState != STATE_DHCP) {
     currentBattery = getBatteryVoltage();
+    batterySum += currentBattery;
+    batterySamples++;
   }
-  drawBatteryIcon(BATT_ICON_X, Y, currentBattery);
 
-  // 2. Battery Percentage (fixed slot)
-  float pct = (currentBattery - 3.4) / (4.2 - 3.4);
-  if (pct < 0)
-    pct = 0;
-  if (pct > 1)
-    pct = 1;
-  String batStr = String((int)(pct * 100)) + "%";
-  // Clear the battery percentage slot first
-  tft.fillRect(BATT_PCT_X, 0, 35, 24, STATUSBAR_BG);
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
-  tft.setCursor(BATT_PCT_X, Y + 4);
-  tft.print(batStr);
+  // Update battery display every 2 seconds
+  bool batteryNeedsUpdate =
+      (millis() - lastBatteryUpdate > 2000) && batterySamples > 0;
+  if (batteryNeedsUpdate || stateChanged) {
+    float avgBattery =
+        (batterySamples > 0) ? (batterySum / batterySamples) : currentBattery;
+    batterySum = 0;
+    batterySamples = 0;
+    lastBatteryUpdate = millis();
+
+    drawBatteryIcon(BATT_ICON_X, Y, avgBattery);
+
+    // 2. Battery Percentage (fixed slot)
+    float pct = (avgBattery - 3.4) / (4.2 - 3.4);
+    if (pct < 0)
+      pct = 0;
+    if (pct > 1)
+      pct = 1;
+    int pctInt = (int)(pct * 100);
+
+    // Only redraw if percentage changed
+    if (pctInt != lastDisplayedPct || stateChanged) {
+      lastDisplayedPct = pctInt;
+      String batStr = String(pctInt) + "%";
+      // Clear the battery percentage slot first
+      tft.fillRect(BATT_PCT_X, 0, 30, 24, STATUSBAR_BG);
+      tft.setTextSize(1);
+      tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
+      tft.setCursor(BATT_PCT_X, Y + 4);
+      tft.print(batStr);
+    }
+  }
 
   // 3. WiFi Signal (fixed position)
   int cursorX = WIFI_ICON_X;
