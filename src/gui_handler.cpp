@@ -150,11 +150,22 @@ void drawAbout() {
 }
 
 // Globals for Settings State
-int settingsIndex =
-    -1; // -1: Inactive (Nav Mode), 0: Brightness, 1: Test Button
-const int settingsCount = 2; // Brightness, Test Button
+int settingsIndex = -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test, 4=Save
+const int settingsCount = 5; // Brightness, Host, Port, Test, Save
 
-void resetSettingsMenu() { settingsIndex = -1; }
+// Edit mode state
+int editMode = 0;  // 0=none, 1=editing IP, 2=editing Port
+int editOctet = 0; // 0-3 for IP octets
+int editDigit = 0; // 0-4 for port digits
+uint8_t tempIP[4]; // Temporary IP during edit
+char tempPort[6];  // Temporary port string during edit
+
+void resetSettingsMenu() {
+  settingsIndex = -1;
+  editMode = 0;
+  editOctet = 0;
+  editDigit = 0;
+}
 
 void drawSettings() {
   // Fill content area with dark background
@@ -166,79 +177,145 @@ void drawSettings() {
   int contentY = 54;
   int startX = 20;
   int startY = contentY + 10;
-  int lineH = 30;
+  int lineH = 22;
 
-  // 1. Brightness
+  // 1. Brightness (index 0)
   tft.setTextSize(1);
   if (settingsIndex == 0)
-    tft.setTextColor(TFT_GREEN, UI_BG); // Selected
+    tft.setTextColor(TFT_GREEN, UI_BG);
   else
-    tft.setTextColor(UI_CYAN, UI_BG); // Inactive but visible
+    tft.setTextColor(UI_CYAN, UI_BG);
 
   tft.setCursor(startX, startY);
   tft.print("Brightness");
 
-  // Draw Brightness Bar
-  int barX = startX + 120;
-  int barW = 140;
+  int barX = startX + 100;
+  int barW = 120;
   int barH = 10;
 
-  // Draw arrows if active
   if (settingsIndex == 0) {
     tft.setTextColor(TFT_GREEN, UI_BG);
-    tft.setCursor(barX - 15, startY);
+    tft.setCursor(barX - 12, startY);
     tft.print("<");
-    tft.setCursor(barX + barW + 5, startY);
-    tft.print(">");
-  } else {
-    // Clear arrows if inactive (overwrite with BG color)
-    tft.setTextColor(UI_BG, UI_BG);
-    tft.setCursor(barX - 15, startY);
-    tft.print("<");
-    tft.setCursor(barX + barW + 5, startY);
+    tft.setCursor(barX + barW + 3, startY);
     tft.print(">");
   }
 
   tft.drawRect(barX, startY, barW, barH, UI_WHITE);
-
   int filledW = map(brightness, 10, 255, 0, barW - 2);
   tft.fillRect(barX + 1, startY + 1, filledW, barH - 2, UI_CYAN);
 
-  // 2. Transmission Info (Read Only)
-  startY += lineH + 10;
-  tft.setTextColor(UI_GREY, UI_BG);
+  // 2. Trans Host (index 1)
+  startY += lineH;
+  if (settingsIndex == 1)
+    tft.setTextColor(TFT_GREEN, UI_BG);
+  else
+    tft.setTextColor(UI_CYAN, UI_BG);
+
   tft.setCursor(startX, startY);
   tft.print("Trans Host:");
-  tft.setTextColor(UI_WHITE, UI_BG);
-  tft.setCursor(startX + 100, startY);
-  tft.print(transHost);
 
-  startY += 20;
-  tft.setTextColor(UI_GREY, UI_BG);
+  // Display IP value
+  int ipX = startX + 90;
+  if (editMode == 1) {
+    // Editing IP - show octets with current one highlighted
+    for (int i = 0; i < 4; i++) {
+      if (i == editOctet)
+        tft.setTextColor(TFT_BLACK, TFT_GREEN);
+      else
+        tft.setTextColor(UI_WHITE, UI_BG);
+
+      char buf[4];
+      sprintf(buf, "%3d", tempIP[i]);
+      tft.setCursor(ipX + i * 36, startY);
+      tft.print(buf);
+      if (i < 3) {
+        tft.setTextColor(UI_WHITE, UI_BG);
+        tft.print(".");
+      }
+    }
+  } else {
+    tft.setTextColor(UI_WHITE, UI_BG);
+    tft.setCursor(ipX, startY);
+    tft.print(transHost);
+    // Show "Press A" hint if selected
+    if (settingsIndex == 1) {
+      tft.setTextColor(TFT_YELLOW, UI_BG);
+      tft.setCursor(250, startY);
+      tft.print("Press A");
+    }
+  }
+
+  // 3. Trans Port (index 2)
+  startY += lineH;
+  if (settingsIndex == 2)
+    tft.setTextColor(TFT_GREEN, UI_BG);
+  else
+    tft.setTextColor(UI_CYAN, UI_BG);
+
   tft.setCursor(startX, startY);
   tft.print("Trans Port:");
-  tft.setTextColor(UI_WHITE, UI_BG);
-  tft.setCursor(startX + 100, startY);
-  tft.print(String(transPort));
 
-  // 3. Test Button
-  startY += 30;
-  if (settingsIndex == 1)
-    tft.fillRoundRect(startX, startY, 120, 25, 5, UI_CYAN);
+  int portX = startX + 90;
+  if (editMode == 2) {
+    // Editing Port - show digits with current one highlighted
+    for (int i = 0; i < 5; i++) {
+      if (i == editDigit)
+        tft.setTextColor(TFT_BLACK, TFT_GREEN);
+      else
+        tft.setTextColor(UI_WHITE, UI_BG);
+
+      tft.setCursor(portX + i * 12, startY);
+      tft.print(tempPort[i]);
+    }
+  } else {
+    tft.setTextColor(UI_WHITE, UI_BG);
+    tft.setCursor(portX, startY);
+    // Format port with leading zeros to 5 digits
+    char portBuf[6];
+    sprintf(portBuf, "%05d", transPort);
+    tft.print(portBuf);
+    // Show "Press A" hint if selected
+    if (settingsIndex == 2) {
+      tft.setTextColor(TFT_YELLOW, UI_BG);
+      tft.setCursor(250, startY);
+      tft.print("Press A");
+    }
+  }
+
+  // 4. Test Button (index 3)
+  startY += lineH + 10;
+  int btnW = 60;
+  int btnH = 22;
+  if (settingsIndex == 3)
+    tft.fillRoundRect(startX, startY, btnW, btnH, 4, UI_CYAN);
   else
-    tft.drawRoundRect(startX, startY, 120, 25, 5, UI_CYAN);
+    tft.drawRoundRect(startX, startY, btnW, btnH, 4, UI_CYAN);
 
-  tft.setTextColor(settingsIndex == 1 ? TFT_BLACK : UI_CYAN,
-                   settingsIndex == 1 ? UI_CYAN : UI_BG);
-  tft.setTextSize(1);
-  // Center text
-  tft.setCursor(startX + 15, startY + 5);
-  tft.print("Test Connection");
+  tft.setTextColor(settingsIndex == 3 ? TFT_BLACK : UI_CYAN,
+                   settingsIndex == 3 ? UI_CYAN : UI_BG);
+  tft.setCursor(startX + 15, startY + 6);
+  tft.print("Test");
 
-  // 4. Info Label (Bottom)
+  // 5. Save Button (index 4)
+  int saveX = startX + btnW + 20;
+  if (settingsIndex == 4)
+    tft.fillRoundRect(saveX, startY, btnW, btnH, 4, TFT_GREEN);
+  else
+    tft.drawRoundRect(saveX, startY, btnW, btnH, 4, TFT_GREEN);
+
+  tft.setTextColor(settingsIndex == 4 ? TFT_BLACK : TFT_GREEN,
+                   settingsIndex == 4 ? TFT_GREEN : UI_BG);
+  tft.setCursor(saveX + 15, startY + 6);
+  tft.print("Save");
+
+  // Info at bottom
   tft.setTextColor(UI_GREY, UI_BG);
-  tft.setCursor(startX, 225); // Bottom alignment
-  tft.print("Edit details via Web UI");
+  tft.setCursor(startX, 225);
+  if (editMode > 0)
+    tft.print("UP/DOWN: value  L/R: position  A: done");
+  else
+    tft.print("A: edit/action  B: back to menu");
 }
 
 #include "web_server.h" // For testTransmission
@@ -247,14 +324,71 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
                          bool b) {
   bool update = false;
 
-  // Navigation logic
+  // If in edit mode, handle differently
+  if (editMode == 1) {
+    // Editing IP octets
+    if (up) {
+      tempIP[editOctet]++;
+      if (tempIP[editOctet] > 255)
+        tempIP[editOctet] = 0;
+      update = true;
+    } else if (down) {
+      if (tempIP[editOctet] == 0)
+        tempIP[editOctet] = 255;
+      else
+        tempIP[editOctet]--;
+      update = true;
+    } else if (right) {
+      editOctet = (editOctet + 1) % 4;
+      update = true;
+    } else if (left) {
+      editOctet = (editOctet + 3) % 4; // -1 with wrap
+      update = true;
+    } else if (a) {
+      // Exit edit mode
+      editMode = 0;
+      update = true;
+    }
+    if (update)
+      drawSettings();
+    return true;
+  } else if (editMode == 2) {
+    // Editing Port digits
+    if (up) {
+      tempPort[editDigit]++;
+      if (tempPort[editDigit] > '9')
+        tempPort[editDigit] = '0';
+      update = true;
+    } else if (down) {
+      if (tempPort[editDigit] == '0')
+        tempPort[editDigit] = '9';
+      else
+        tempPort[editDigit]--;
+      update = true;
+    } else if (right) {
+      editDigit = (editDigit + 1) % 5;
+      update = true;
+    } else if (left) {
+      editDigit = (editDigit + 4) % 5; // -1 with wrap
+      update = true;
+    } else if (a) {
+      // Exit edit mode
+      editMode = 0;
+      update = true;
+    }
+    if (update)
+      drawSettings();
+    return true;
+  }
+
+  // Normal navigation (not in edit mode)
   if (up) {
     if (settingsIndex > -1) {
       settingsIndex--;
       update = true;
     }
   } else if (down) {
-    if (settingsIndex < settingsCount - 1) { // -1 -> 0, 0 -> 1
+    if (settingsIndex < settingsCount - 1) {
       settingsIndex++;
       update = true;
     }
@@ -281,15 +415,49 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       saveConfig();
       update = true;
     }
-  } else if (settingsIndex == 1) { // Test
+  } else if (settingsIndex == 1) { // Host
     if (a) {
-      tft.fillRect(20, 200, 280, 20, UI_BG); // Clear msg area
+      // Enter edit mode for IP - parse current transHost to octets
+      editMode = 1;
+      editOctet = 0;
+      // Parse IP
+      int o1, o2, o3, o4;
+      if (sscanf(transHost.c_str(), "%d.%d.%d.%d", &o1, &o2, &o3, &o4) == 4) {
+        tempIP[0] = o1;
+        tempIP[1] = o2;
+        tempIP[2] = o3;
+        tempIP[3] = o4;
+      } else {
+        tempIP[0] = 192;
+        tempIP[1] = 168;
+        tempIP[2] = 1;
+        tempIP[3] = 1;
+      }
+      update = true;
+    }
+  } else if (settingsIndex == 2) { // Port
+    if (a) {
+      // Enter edit mode for Port
+      editMode = 2;
+      editDigit = 0;
+      sprintf(tempPort, "%05d", transPort);
+      update = true;
+    }
+  } else if (settingsIndex == 3) { // Test
+    if (a) {
+      // Build temp IP string for testing
+      char tempIPStr[16];
+      sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
+              tempIP[3]);
+      int tempPortVal = atoi(tempPort);
+
+      tft.fillRect(20, 200, 280, 20, UI_BG);
       tft.setCursor(20, 200);
       tft.setTextColor(TFT_YELLOW, UI_BG);
       tft.print("Testing...");
 
-      String res = testTransmission(transHost, transPort, transPath, transUser,
-                                    transPass);
+      String res = testTransmission(String(tempIPStr), tempPortVal, transPath,
+                                    transUser, transPass);
 
       tft.fillRect(20, 200, 280, 20, UI_BG);
       tft.setCursor(20, 200);
@@ -299,13 +467,29 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
         tft.setTextColor(TFT_RED, UI_BG);
       tft.print(res.substring(0, 40));
     }
+  } else if (settingsIndex == 4) { // Save
+    if (a) {
+      // Save temp values to real config
+      char tempIPStr[16];
+      sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
+              tempIP[3]);
+      transHost = String(tempIPStr);
+      transPort = atoi(tempPort);
+      saveConfig();
+
+      tft.fillRect(20, 200, 280, 20, UI_BG);
+      tft.setCursor(20, 200);
+      tft.setTextColor(TFT_GREEN, UI_BG);
+      tft.print("Settings Saved!");
+      update = true;
+    }
   }
 
   if (update) {
     drawSettings();
   }
 
-  return true; // We handled (or swallowed) input. Except L/R in -1 state.
+  return true;
 }
 
 // Globals for status caching to prevent flickering

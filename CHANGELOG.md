@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.11.0] - 2026-01-03
+### Added
+- **Settings Inline Editing**: Trans Host (IP address) and Trans Port can now be edited directly in the TFT Settings menu.
+  - Press A to enter edit mode on Host/Port rows
+  - UP/DOWN adjusts value (octets 0-255, digits 0-9)
+  - LEFT/RIGHT moves between octets/digit positions
+  - Press A again to exit edit mode
+- **Test Button**: Tests connection with currently edited (unsaved) values
+- **Save Button**: Saves edited Host/Port values to persistent storage
+
+### Changed
+- Settings page layout updated with new buttons: "Test" and "Save"
+- Bottom hint shows contextual help for current mode
+
 ## [1.10.3] - 2026-01-03
 ### Changed
 - **Battery Position**: Moved battery percentage 5px closer to the battery icon.

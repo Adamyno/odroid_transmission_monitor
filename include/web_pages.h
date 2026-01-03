@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const char *const VERSION = "1.10.3";
+const char *const VERSION = "1.11.0";
 
 // --- HTML Content ---
 
