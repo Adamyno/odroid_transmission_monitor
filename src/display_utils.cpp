@@ -8,6 +8,7 @@ static long lastRssi = -1000;
 static IPAddress lastIp;
 static bool lastBlinkState = false;
 static float lastBattery = -1.0;
+static bool lastAltSpeedEnabled = false;
 
 #define STATUSBAR_BG 0x2104
 
@@ -71,7 +72,9 @@ void drawStatusBar() {
   static long lastUl = -1;
   long currentDl = transmission.getDownloadSpeed();
   long currentUl = transmission.getUploadSpeed();
-  bool statsChanged = (currentDl != lastDl || currentUl != lastUl);
+  bool currentAltSpeed = transmission.isAltSpeedEnabled();
+  bool statsChanged = (currentDl != lastDl || currentUl != lastUl ||
+                       currentAltSpeed != lastAltSpeedEnabled);
 
   // Redraw if anything significant changed to ensure layout consistency
   // Ideally we use a full redraw technique for the status bar because positions
@@ -250,6 +253,7 @@ void drawStatusBar() {
   lastTransConnected = transConnected;
   lastDl = currentDl;
   lastUl = currentUl;
+  lastAltSpeedEnabled = currentAltSpeed;
   lastBattery = currentBattery;
 }
 

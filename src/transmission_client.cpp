@@ -158,7 +158,7 @@ void TransmissionClient::fetchStats() {
 
     if (code2 == 200) {
       String resp2 = http.getString();
-      DynamicJsonDocument doc2(512);
+      DynamicJsonDocument doc2(4096); // Larger buffer for full session response
       DeserializationError err2 = deserializeJson(doc2, resp2);
       if (!err2 && doc2["result"] == "success") {
         _altSpeedEnabled = doc2["arguments"]["alt-speed-enabled"] | false;

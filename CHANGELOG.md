@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.2] - 2026-01-03
+### Fixed
+- **Alt-Speed Sync**: Fixed the JSON buffer size for parsing the `session-get` response (512 -> 4096 bytes). The alt-speed icon now correctly updates when the setting is changed from the Transmission Web UI.
+
+## [1.8.1] - 2026-01-03
+### Fixed
+- **Status Bar**: Fixed alt-speed (turtle) icon not updating when the setting is changed externally (e.g., via Web UI). The display now correctly tracks and updates based on the server's state.
+
 ## [1.8.0] - 2026-01-03
 ### Added
 - **Alt-Speed Toggle**: Press the speaker button (Select, GPIO 27) to toggle Transmission's alternative speed mode.
