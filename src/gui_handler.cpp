@@ -4,6 +4,7 @@
 #include "input_handler.h"
 #include "transmission_client.h"
 #include "web_pages.h" // For VERSION constant
+#include "wifi_scan_gui.h"
 #include <WiFi.h>
 
 // Menu Items
@@ -150,9 +151,17 @@ void drawAbout() {
 }
 
 // Globals for Settings State
-int settingsIndex =
-    -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test/Save, 4=Reset
-const int settingsCount = 5; // Brightness, Host, Port, Test/Save, Factory Reset
+int settingsIndex = -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test/Save,
+                        // 4=Reset, 5=WiFi Scan (AP only)
+
+// Helper to get current settings count (differs in AP mode)
+int getSettingsCount() {
+  // In AP mode, show WiFi Scan button
+  if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+    return 6; // Brightness, Host, Port, Test/Save, Factory Reset, WiFi Scan
+  }
+  return 5; // Brightness, Host, Port, Test/Save, Factory Reset
+}
 
 // Edit mode state
 int editMode = 0;  // 0=none, 1=editing IP, 2=editing Port, 3=editing Brightness
@@ -398,6 +407,22 @@ void drawSettings() {
   tft.setCursor(startX + 10, startY + 6);
   tft.print("Factory Reset");
 
+  // 6. WiFi Scan Button (index 5) - only in AP mode
+  if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+    startY += lineH + 5;
+    int wifiScanW = 90;
+    bool wifiScanSelected = (settingsIndex == 5);
+    if (wifiScanSelected)
+      tft.fillRoundRect(startX, startY, wifiScanW, btnH, 4, UI_CYAN);
+    else
+      tft.drawRoundRect(startX, startY, wifiScanW, btnH, 4, UI_CYAN);
+
+    tft.setTextColor(wifiScanSelected ? TFT_BLACK : UI_CYAN,
+                     wifiScanSelected ? UI_CYAN : UI_BG);
+    tft.setCursor(startX + 10, startY + 6);
+    tft.print("WiFi Scan");
+  }
+
   // Info at bottom
   tft.setTextColor(UI_GREY, UI_BG);
   tft.setCursor(startX, 225);
@@ -485,7 +510,7 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       update = true;
     }
   } else if (down) {
-    if (settingsIndex < settingsCount - 1) {
+    if (settingsIndex < getSettingsCount() - 1) {
       settingsIndex++;
       update = true;
     }
@@ -632,6 +657,12 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
 
       // Call factory reset (will restart)
       factoryReset();
+    }
+  } else if (settingsIndex == 5) { // WiFi Scan (only in AP mode)
+    if (a) {
+      // Enter WiFi Scan mode
+      enterWifiScanMode();
+      return true; // Input handled, main loop will switch to WiFi scan screen
     }
   }
 

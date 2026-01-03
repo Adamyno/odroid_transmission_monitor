@@ -17,6 +17,7 @@ void readInputs();
 
 extern bool btnMenuPressed;
 extern bool btnSelectPressed;
+extern bool btnStartPressed;
 extern bool btnUpPressed;
 extern bool btnDownPressed;
 extern bool btnLeftPressed;

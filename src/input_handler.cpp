@@ -2,6 +2,7 @@
 
 bool btnMenuPressed = false;
 bool btnSelectPressed = false;
+bool btnStartPressed = false;
 bool btnUpPressed = false;
 bool btnDownPressed = false;
 bool btnLeftPressed = false;
@@ -12,6 +13,7 @@ bool btnBPressed = false;
 // State tracking for edge detection
 static bool prevBtnMenu = true;
 static bool prevBtnSelect = true;
+static bool prevBtnStart = true;
 static bool prevBtnA = true;
 static bool prevBtnB = true;
 static bool prevUp = false;
@@ -34,6 +36,7 @@ void readInputs() {
   // Reset one-shot flags
   btnMenuPressed = false;
   btnSelectPressed = false;
+  btnStartPressed = false;
   btnUpPressed = false;
   btnDownPressed = false;
   btnLeftPressed = false;
@@ -55,6 +58,11 @@ void readInputs() {
   if (curSelect == LOW && prevBtnSelect == HIGH)
     btnSelectPressed = true;
   prevBtnSelect = curSelect;
+
+  bool curStart = digitalRead(BTN_START);
+  if (curStart == LOW && prevBtnStart == HIGH)
+    btnStartPressed = true;
+  prevBtnStart = curStart;
 
   bool curA = digitalRead(BTN_A);
   if (curA == LOW && prevBtnA == HIGH)

@@ -17,6 +17,7 @@
 #include "transmission_client.h"
 #include "web_pages.h"
 #include "web_server.h"
+#include "wifi_scan_gui.h"
 
 // --- Configuration ---
 // VERSION is in web_pages.h
@@ -231,8 +232,33 @@ void loop() {
     // Pass input to settings page if active
     bool processed = false; // Flag to indicate if input was handled by settings
     if (currentState == STATE_SETTINGS) {
-      if (btnUpPressed || btnDownPressed || btnLeftPressed || btnRightPressed ||
-          btnAPressed || btnBPressed) {
+      // Check if in WiFi scan mode
+      if (isInWifiScanMode()) {
+        if (btnUpPressed || btnDownPressed || btnLeftPressed ||
+            btnRightPressed || btnAPressed || btnBPressed || btnStartPressed ||
+            btnSelectPressed) {
+          handleWifiScanInput(btnUpPressed, btnDownPressed, btnLeftPressed,
+                              btnRightPressed, btnAPressed, btnBPressed,
+                              btnStartPressed, btnSelectPressed);
+          processed = true;
+
+          // Check if we exited WiFi scan mode (successful connection)
+          if (!isInWifiScanMode()) {
+            // If connected, switch to connected state
+            if (WiFi.status() == WL_CONNECTED) {
+              currentState = STATE_CONNECTED;
+              drawStatusBar();
+              drawDashboard();
+            } else {
+              // Still in AP mode, redraw settings
+              drawSettings();
+            }
+          }
+        } else {
+          processed = true; // Block other inputs while in WiFi scan
+        }
+      } else if (btnUpPressed || btnDownPressed || btnLeftPressed ||
+                 btnRightPressed || btnAPressed || btnBPressed) {
         // If handleSettingsInput returns true, it handled the input (e.g.
         // brightness adj). If false (inactive state), allowed to fall through
         // to Tab Switch.
@@ -240,6 +266,11 @@ void loop() {
                                 btnRightPressed, btnAPressed, btnBPressed)) {
           // Handled, do not process tab switch
           processed = true;
+
+          // Check if WiFi scan mode was entered
+          if (isInWifiScanMode()) {
+            drawWifiScanScreen();
+          }
         }
       }
     }

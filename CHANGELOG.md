@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.20.0] - 2026-01-03
+### Added
+- **WiFi Scan TFT GUI**: In AP mode, Settings page now shows "WiFi Scan" button that opens a full WiFi configuration interface:
+  - **Network List**: Scrollable list of discovered networks with RSSI strength icons and lock icons for secured networks
+  - **Network Details**: View SSID, BSSID, signal strength, security type
+  - **Connect Button**: Always available - opens password entry for secured networks, or connects directly to open networks
+  - **WPS Connect**: Additional button for WPS-capable networks (WPA/WPA2)
+  - **Virtual Keyboard**: On-screen keyboard with uppercase/lowercase, numbers, and special characters
+  - **Rescan**: Press START on network list to rescan
+  - **Smart Error Handling**: Invalid passwords show error and stay in password entry; only saves config on successful connection
+
 ## [1.13.0] - 2026-01-03
 ### Changed
 - **Brightness Interaction**: Brightness field now uses "Press A" interaction like other settings. Press A to enter edit mode, LEFT/RIGHT to adjust, A to exit. Removed < and > symbols.
