@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.7.10] - 2026-01-03
+### Fixed
+- **Status Bar**: Fixed a 1-pixel visual artifact from the upload icon remaining after disconnection.
+- **OTA**: Restored the green progress bar on the status bar during firmware updates.
+
 ## [1.7.9] - 2026-01-03
 ### Changed
 - **Branding**: Updated Project link and creator name to "Adamyno" on the About page.

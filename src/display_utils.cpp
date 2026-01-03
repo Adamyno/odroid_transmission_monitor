@@ -149,7 +149,7 @@ void drawStatusBar() {
 
     // Clear the transmission area if stats changed (to prevent ghosting)
     if (statsChanged || transChanged) {
-      tft.fillRect(0, 0, cursorX - 5, 24, STATUSBAR_BG);
+      tft.fillRect(0, 0, cursorX, 24, STATUSBAR_BG);
     }
 
     // cursorX -= (16 + 5); // Icon is 16x16
@@ -199,15 +199,30 @@ void drawStatusBar() {
 
   } else if (transChanged && !transConnected) {
     // Clear transmission area when disconnected
-    tft.fillRect(0, 0, cursorX - 5, 24, STATUSBAR_BG);
+    // Fix: Clear up to cursorX to ensure no artifacts (like the 1px from UL
+    // icon) are left. Previously cursorX - 5 missed the rightmost edge of the
+    // icon.
+    tft.fillRect(0, 0, cursorX, 24, STATUSBAR_BG);
   }
 
   // 6. Left side status text (Connecting etc/ OTA)
-  // Used if we have leftover space or high priority message
   if (currentState == STATE_OTA) {
     tft.setCursor(5, 4);
     tft.print("OTA...");
-    // simplified bar
+
+    // Restore OTA Progress Bar
+    // Draw a frame or just a bar
+    int barWidth = 100;
+    int barHeight = 4;
+    int x = 60; // To the right of "OTA..." text
+    int y = 10;
+
+    // Background
+    tft.fillRect(x, y, barWidth, barHeight, UI_GREY);
+    // Progress
+    int fillW = (otaProgress * barWidth) / 100;
+    tft.fillRect(x, y, fillW, barHeight, TFT_GREEN);
+
   } else if (currentState == STATE_CONNECTING) {
     tft.setCursor(5, 4);
     tft.print("Connecting...");
