@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.11.1] - 2026-01-03
+### Fixed
+- **Temp Value Display**: After exiting edit mode, the edited (unsaved) values are now shown instead of reverting to saved values.
+- **Test/Save Navigation**: Test and Save buttons are now on the same row, navigated with LEFT/RIGHT instead of UP/DOWN.
+
 ## [1.11.0] - 2026-01-03
 ### Added
 - **Settings Inline Editing**: Trans Host (IP address) and Trans Port can now be edited directly in the TFT Settings menu.

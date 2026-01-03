@@ -150,21 +150,26 @@ void drawAbout() {
 }
 
 // Globals for Settings State
-int settingsIndex = -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test, 4=Save
-const int settingsCount = 5; // Brightness, Host, Port, Test, Save
+int settingsIndex = -1; // -1=Nav, 0=Brightness, 1=Host, 2=Port, 3=Test/Save row
+const int settingsCount = 4; // Brightness, Host, Port, Test/Save (same row)
 
 // Edit mode state
-int editMode = 0;  // 0=none, 1=editing IP, 2=editing Port
-int editOctet = 0; // 0-3 for IP octets
-int editDigit = 0; // 0-4 for port digits
-uint8_t tempIP[4]; // Temporary IP during edit
-char tempPort[6];  // Temporary port string during edit
+int editMode = 0;             // 0=none, 1=editing IP, 2=editing Port
+int editOctet = 0;            // 0-3 for IP octets
+int editDigit = 0;            // 0-4 for port digits
+uint8_t tempIP[4];            // Temporary IP during edit
+char tempPort[6];             // Temporary port string during edit
+bool tempInitialized = false; // True after user entered edit mode at least once
+bool testSaveSelected =
+    false; // false=Test, true=Save (for LEFT/RIGHT navigation)
 
 void resetSettingsMenu() {
   settingsIndex = -1;
   editMode = 0;
   editOctet = 0;
   editDigit = 0;
+  tempInitialized = false;
+  testSaveSelected = false;
 }
 
 void drawSettings() {
@@ -237,7 +242,14 @@ void drawSettings() {
   } else {
     tft.setTextColor(UI_WHITE, UI_BG);
     tft.setCursor(ipX, startY);
-    tft.print(transHost);
+    // Show temp values if initialized, otherwise show saved values
+    if (tempInitialized) {
+      char ipBuf[16];
+      sprintf(ipBuf, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2], tempIP[3]);
+      tft.print(ipBuf);
+    } else {
+      tft.print(transHost);
+    }
     // Show "Press A" hint if selected
     if (settingsIndex == 1) {
       tft.setTextColor(TFT_YELLOW, UI_BG);
@@ -271,10 +283,14 @@ void drawSettings() {
   } else {
     tft.setTextColor(UI_WHITE, UI_BG);
     tft.setCursor(portX, startY);
-    // Format port with leading zeros to 5 digits
-    char portBuf[6];
-    sprintf(portBuf, "%05d", transPort);
-    tft.print(portBuf);
+    // Show temp values if initialized, otherwise show saved values
+    if (tempInitialized) {
+      tft.print(tempPort);
+    } else {
+      char portBuf[6];
+      sprintf(portBuf, "%05d", transPort);
+      tft.print(portBuf);
+    }
     // Show "Press A" hint if selected
     if (settingsIndex == 2) {
       tft.setTextColor(TFT_YELLOW, UI_BG);
@@ -283,29 +299,33 @@ void drawSettings() {
     }
   }
 
-  // 4. Test Button (index 3)
+  // 4. Test/Save Buttons (index 3, same row, LEFT/RIGHT to switch)
   startY += lineH + 10;
   int btnW = 60;
   int btnH = 22;
-  if (settingsIndex == 3)
+
+  // Test Button (left)
+  bool testSelected = (settingsIndex == 3 && !testSaveSelected);
+  if (testSelected)
     tft.fillRoundRect(startX, startY, btnW, btnH, 4, UI_CYAN);
   else
     tft.drawRoundRect(startX, startY, btnW, btnH, 4, UI_CYAN);
 
-  tft.setTextColor(settingsIndex == 3 ? TFT_BLACK : UI_CYAN,
-                   settingsIndex == 3 ? UI_CYAN : UI_BG);
+  tft.setTextColor(testSelected ? TFT_BLACK : UI_CYAN,
+                   testSelected ? UI_CYAN : UI_BG);
   tft.setCursor(startX + 15, startY + 6);
   tft.print("Test");
 
-  // 5. Save Button (index 4)
+  // Save Button (right)
   int saveX = startX + btnW + 20;
-  if (settingsIndex == 4)
+  bool saveSelected = (settingsIndex == 3 && testSaveSelected);
+  if (saveSelected)
     tft.fillRoundRect(saveX, startY, btnW, btnH, 4, TFT_GREEN);
   else
     tft.drawRoundRect(saveX, startY, btnW, btnH, 4, TFT_GREEN);
 
-  tft.setTextColor(settingsIndex == 4 ? TFT_BLACK : TFT_GREEN,
-                   settingsIndex == 4 ? TFT_GREEN : UI_BG);
+  tft.setTextColor(saveSelected ? TFT_BLACK : TFT_GREEN,
+                   saveSelected ? TFT_GREEN : UI_BG);
   tft.setCursor(saveX + 15, startY + 6);
   tft.print("Save");
 
@@ -420,18 +440,22 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       // Enter edit mode for IP - parse current transHost to octets
       editMode = 1;
       editOctet = 0;
-      // Parse IP
-      int o1, o2, o3, o4;
-      if (sscanf(transHost.c_str(), "%d.%d.%d.%d", &o1, &o2, &o3, &o4) == 4) {
-        tempIP[0] = o1;
-        tempIP[1] = o2;
-        tempIP[2] = o3;
-        tempIP[3] = o4;
-      } else {
-        tempIP[0] = 192;
-        tempIP[1] = 168;
-        tempIP[2] = 1;
-        tempIP[3] = 1;
+      // Parse IP (from temp if already initialized, else from saved)
+      if (!tempInitialized) {
+        int o1, o2, o3, o4;
+        if (sscanf(transHost.c_str(), "%d.%d.%d.%d", &o1, &o2, &o3, &o4) == 4) {
+          tempIP[0] = o1;
+          tempIP[1] = o2;
+          tempIP[2] = o3;
+          tempIP[3] = o4;
+        } else {
+          tempIP[0] = 192;
+          tempIP[1] = 168;
+          tempIP[2] = 1;
+          tempIP[3] = 1;
+        }
+        sprintf(tempPort, "%05d", transPort); // Also init port
+        tempInitialized = true;
       }
       update = true;
     }
@@ -440,48 +464,72 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       // Enter edit mode for Port
       editMode = 2;
       editDigit = 0;
-      sprintf(tempPort, "%05d", transPort);
+      if (!tempInitialized) {
+        // Init port from saved
+        sprintf(tempPort, "%05d", transPort);
+        // Also init IP
+        int o1, o2, o3, o4;
+        if (sscanf(transHost.c_str(), "%d.%d.%d.%d", &o1, &o2, &o3, &o4) == 4) {
+          tempIP[0] = o1;
+          tempIP[1] = o2;
+          tempIP[2] = o3;
+          tempIP[3] = o4;
+        } else {
+          tempIP[0] = 192;
+          tempIP[1] = 168;
+          tempIP[2] = 1;
+          tempIP[3] = 1;
+        }
+        tempInitialized = true;
+      }
       update = true;
     }
-  } else if (settingsIndex == 3) { // Test
-    if (a) {
-      // Build temp IP string for testing
-      char tempIPStr[16];
-      sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
-              tempIP[3]);
-      int tempPortVal = atoi(tempPort);
+  } else if (settingsIndex == 3) { // Test/Save row
+    // LEFT/RIGHT to switch between Test and Save
+    if (left && testSaveSelected) {
+      testSaveSelected = false;
+      update = true;
+    } else if (right && !testSaveSelected) {
+      testSaveSelected = true;
+      update = true;
+    } else if (a) {
+      if (!testSaveSelected) {
+        // Test button
+        char tempIPStr[16];
+        sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
+                tempIP[3]);
+        int tempPortVal = atoi(tempPort);
 
-      tft.fillRect(20, 200, 280, 20, UI_BG);
-      tft.setCursor(20, 200);
-      tft.setTextColor(TFT_YELLOW, UI_BG);
-      tft.print("Testing...");
+        tft.fillRect(20, 200, 280, 20, UI_BG);
+        tft.setCursor(20, 200);
+        tft.setTextColor(TFT_YELLOW, UI_BG);
+        tft.print("Testing...");
 
-      String res = testTransmission(String(tempIPStr), tempPortVal, transPath,
-                                    transUser, transPass);
+        String res = testTransmission(String(tempIPStr), tempPortVal, transPath,
+                                      transUser, transPass);
 
-      tft.fillRect(20, 200, 280, 20, UI_BG);
-      tft.setCursor(20, 200);
-      if (res.indexOf("Success") >= 0)
+        tft.fillRect(20, 200, 280, 20, UI_BG);
+        tft.setCursor(20, 200);
+        if (res.indexOf("Success") >= 0)
+          tft.setTextColor(TFT_GREEN, UI_BG);
+        else
+          tft.setTextColor(TFT_RED, UI_BG);
+        tft.print(res.substring(0, 40));
+      } else {
+        // Save button
+        char tempIPStr[16];
+        sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
+                tempIP[3]);
+        transHost = String(tempIPStr);
+        transPort = atoi(tempPort);
+        saveConfig();
+
+        tft.fillRect(20, 200, 280, 20, UI_BG);
+        tft.setCursor(20, 200);
         tft.setTextColor(TFT_GREEN, UI_BG);
-      else
-        tft.setTextColor(TFT_RED, UI_BG);
-      tft.print(res.substring(0, 40));
-    }
-  } else if (settingsIndex == 4) { // Save
-    if (a) {
-      // Save temp values to real config
-      char tempIPStr[16];
-      sprintf(tempIPStr, "%d.%d.%d.%d", tempIP[0], tempIP[1], tempIP[2],
-              tempIP[3]);
-      transHost = String(tempIPStr);
-      transPort = atoi(tempPort);
-      saveConfig();
-
-      tft.fillRect(20, 200, 280, 20, UI_BG);
-      tft.setCursor(20, 200);
-      tft.setTextColor(TFT_GREEN, UI_BG);
-      tft.print("Settings Saved!");
-      update = true;
+        tft.print("Settings Saved!");
+        update = true;
+      }
     }
   }
 
