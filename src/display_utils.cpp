@@ -89,41 +89,43 @@ void drawStatusBar() {
   if (!needsRedraw)
     return;
 
-  // Only clear the entire bar on major state changes
+  // Fixed positions for each status bar element (right to left)
+  // This prevents smearing (positions are fixed) and flickering (only clear
+  // what changes)
+  int const Y = 4;
+  int const BATT_ICON_X = 295; // Battery icon (20px wide)
+  int const BATT_PCT_X = 260;  // Battery % (fixed 35px slot for "100%")
+  int const WIFI_ICON_X = 240; // WiFi icon (16px wide)
+  // Transmission area: 0 to WIFI_ICON_X - 5
+
+  // Only clear entire bar on major state changes
   if (stateChanged) {
     tft.fillRect(0, 0, 320, 24, STATUSBAR_BG);
   }
 
-  int cursorX = 315; // Start from right edge with padding
-  int const Y = 4;
-
-  // 1. Battery Icon
-  // Size: 20px wide
-  cursorX -= 20;
+  // 1. Battery Icon (fixed position)
   float currentBattery = -1.0;
   if (currentState != STATE_CONNECTING && currentState != STATE_DHCP) {
     currentBattery = getBatteryVoltage();
   }
-  drawBatteryIcon(cursorX, Y, currentBattery);
+  drawBatteryIcon(BATT_ICON_X, Y, currentBattery);
 
-  // 2. Battery Percentage
-  // Size: Text Width
+  // 2. Battery Percentage (fixed slot)
   float pct = (currentBattery - 3.4) / (4.2 - 3.4);
   if (pct < 0)
     pct = 0;
   if (pct > 1)
     pct = 1;
   String batStr = String((int)(pct * 100)) + "%";
-  int battTextW = tft.textWidth(batStr);
-  cursorX -= (battTextW + 3);
+  // Clear the battery percentage slot first
+  tft.fillRect(BATT_PCT_X, 0, 35, 24, STATUSBAR_BG);
   tft.setTextSize(1);
   tft.setTextColor(TFT_WHITE, STATUSBAR_BG);
-  tft.setCursor(cursorX, Y + 4);
+  tft.setCursor(BATT_PCT_X, Y + 4);
   tft.print(batStr);
 
-  // 3. WiFi Signal
-  // User wants this moved right as much as possible, so just small padding
-  cursorX -= (16 + 5); // Icon width 16 + 5 padding
+  // 3. WiFi Signal (fixed position)
+  int cursorX = WIFI_ICON_X;
 
   // Logic from old drawWifiIcon
   bool isAP = (WiFi.getMode() == WIFI_AP) || ((WiFi.getMode() == WIFI_AP_STA) &&

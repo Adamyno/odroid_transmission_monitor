@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.2] - 2026-01-03
+### Fixed
+- **Status Bar Smearing**: Fixed icon/text smearing when battery percentage changes (e.g., 99% to 100%). The status bar now fully redraws on any value change to prevent artifacts from position shifts.
+
 ## [1.10.1] - 2026-01-03
 ### Changed
 - **Status Bar Layout**: Swapped positions of turtle icon and free space display for better visual flow.
