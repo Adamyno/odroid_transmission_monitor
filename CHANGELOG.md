@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.9.0] - 2026-01-03
+### Changed
+- **Turtle Icon**: Enhanced the alt-speed turtle icon on the status bar. It is now green with shell details, a head with an eye, and four visible legs.
+
 ## [1.8.2] - 2026-01-03
 ### Fixed
 - **Alt-Speed Sync**: Fixed the JSON buffer size for parsing the `session-get` response (512 -> 4096 bytes). The alt-speed icon now correctly updates when the setting is changed from the Transmission Web UI.

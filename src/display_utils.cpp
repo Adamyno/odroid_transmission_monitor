@@ -205,14 +205,32 @@ void drawStatusBar() {
       cursorX -= 18; // Space for turtle icon
       int tx = cursorX;
       int ty = Y + 2;
-      // Draw a simple turtle: shell (ellipse-ish) + head + legs
-      // Shell
-      tft.fillRoundRect(tx + 3, ty + 2, 10, 8, 3, TFT_CYAN);
-      // Head
-      tft.fillCircle(tx + 14, ty + 5, 2, TFT_CYAN);
-      // Legs (4 small lines)
-      tft.fillRect(tx + 4, ty + 10, 2, 3, TFT_CYAN);
-      tft.fillRect(tx + 10, ty + 10, 2, 3, TFT_CYAN);
+
+// Detailed Turtle (v2)
+// Color constants
+#define TURTLE_BROWN 0xCC68 // Light brown-ish
+      // Shell: Green
+      // Head/Legs: Brown
+
+      // Move turtle down a bit to center vertically if we remove top legs
+      // Or just make shell bigger
+
+      // Bigger Shell (12x9)
+      tft.fillRoundRect(tx + 2, ty + 3, 12, 9, 4, TFT_GREEN);
+
+      // Shell Pattern
+      tft.drawPixel(tx + 5, ty + 5, STATUSBAR_BG);
+      tft.drawPixel(tx + 9, ty + 5, STATUSBAR_BG);
+      tft.drawPixel(tx + 7, ty + 8, STATUSBAR_BG);
+
+      // Head (Brown)
+      tft.fillCircle(tx + 15, ty + 5, 2, TURTLE_BROWN);
+      // Eye (Black)
+      tft.drawPixel(tx + 15, ty + 4, TFT_BLACK);
+
+      // Back Legs Only (Brown) - slightly larger maybe?
+      tft.fillRect(tx + 3, ty + 11, 2, 3, TURTLE_BROWN);  // Back Left
+      tft.fillRect(tx + 11, ty + 11, 2, 3, TURTLE_BROWN); // Back Right
     }
 
   } else if (transChanged && !transConnected) {
