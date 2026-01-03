@@ -155,11 +155,11 @@ int settingsIndex =
 const int settingsCount = 5; // Brightness, Host, Port, Test/Save, Factory Reset
 
 // Edit mode state
-int editMode = 0;             // 0=none, 1=editing IP, 2=editing Port
-int editOctet = 0;            // 0-3 for IP octets
-int editDigit = 0;            // 0-4 for port digits
-uint8_t tempIP[4];            // Temporary IP during edit
-char tempPort[6];             // Temporary port string during edit
+int editMode = 0;  // 0=none, 1=editing IP, 2=editing Port, 3=editing Brightness
+int editOctet = 0; // 0-3 for IP octets
+int editDigit = 0; // 0-4 for port digits
+uint8_t tempIP[4]; // Temporary IP during edit
+char tempPort[6];  // Temporary port string during edit
 bool tempInitialized = false; // True after user entered edit mode at least once
 bool testSaveSelected =
     false; // false=Test, true=Save (for LEFT/RIGHT navigation)
@@ -254,17 +254,16 @@ void drawSettings() {
   int barW = 120;
   int barH = 10;
 
-  if (settingsIndex == 0) {
-    tft.setTextColor(TFT_GREEN, UI_BG);
-    tft.setCursor(barX - 12, startY);
-    tft.print("<");
-    tft.setCursor(barX + barW + 3, startY);
-    tft.print(">");
-  }
-
   tft.drawRect(barX, startY, barW, barH, UI_WHITE);
   int filledW = map(brightness, 10, 255, 0, barW - 2);
   tft.fillRect(barX + 1, startY + 1, filledW, barH - 2, UI_CYAN);
+
+  // Show "Press A" hint if selected but not in edit mode
+  if (settingsIndex == 0 && editMode != 3) {
+    tft.setTextColor(TFT_YELLOW, UI_BG);
+    tft.setCursor(250, startY);
+    tft.print("Press A");
+  }
 
   // 2. Trans Host (index 1)
   startY += lineH;
@@ -498,20 +497,34 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
     if (left || right)
       return false;
   } else if (settingsIndex == 0) { // Brightness
-    if (left) {
-      brightness -= 15;
-      if (brightness < 10)
-        brightness = 10;
-      setBrightness(brightness);
-      saveConfig();
-      update = true;
-    } else if (right) {
-      brightness += 15;
-      if (brightness > 255)
-        brightness = 255;
-      setBrightness(brightness);
-      saveConfig();
-      update = true;
+    if (a) {
+      // Toggle edit mode for Brightness
+      if (editMode == 3) {
+        // Exit edit mode
+        editMode = 0;
+        update = true;
+      } else {
+        // Enter edit mode
+        editMode = 3;
+        update = true;
+      }
+    } else if (editMode == 3) {
+      // Only allow adjustment when in edit mode
+      if (left) {
+        brightness -= 15;
+        if (brightness < 10)
+          brightness = 10;
+        setBrightness(brightness);
+        saveConfig();
+        update = true;
+      } else if (right) {
+        brightness += 15;
+        if (brightness > 255)
+          brightness = 255;
+        setBrightness(brightness);
+        saveConfig();
+        update = true;
+      }
     }
   } else if (settingsIndex == 1) { // Host
     if (a) {

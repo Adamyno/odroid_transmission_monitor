@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.13.0] - 2026-01-03
+### Changed
+- **Brightness Interaction**: Brightness field now uses "Press A" interaction like other settings. Press A to enter edit mode, LEFT/RIGHT to adjust, A to exit. Removed < and > symbols.
+
 ## [1.12.2] - 2026-01-03
 ### Fixed
 - **Settings Edit Position Artifacts**: Fixed text shifting down when editing IP/Port values. Y coordinates in partial redraw functions now match the main drawSettings() layout exactly.
