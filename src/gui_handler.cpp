@@ -175,14 +175,15 @@ void resetSettingsMenu() {
 
 // Partial redraw: only the IP octets area (no full screen redraw)
 void drawIPEditArea() {
+  int contentY = 54;
   int startX = 20;
-  int startY =
-      32 + 28 + 28; // Tab bar height + Brightness row + Host label offset
+  int startY = contentY + 10; // Base Y position
+  int lineH = 22;
+  startY += lineH; // Skip Brightness row --> Trans Host row
   int ipX = startX + 90;
-  int lineH = 24;
 
-  // Clear the entire row (including hint area)
-  tft.fillRect(startX, startY, 320 - startX, lineH, UI_BG);
+  // Clear only the IP value area (150 pixels wide should cover 4 octets + dots)
+  tft.fillRect(ipX, startY, 150, 16, UI_BG);
 
   // Redraw octets
   for (int i = 0; i < 4; i++) {
@@ -200,24 +201,20 @@ void drawIPEditArea() {
       tft.print(".");
     }
   }
-
-  // Hint
-  if (settingsIndex == 2) {
-    tft.setTextColor(TFT_YELLOW, UI_BG);
-    tft.setCursor(250, startY);
-    tft.print("Press A");
-  }
 }
 
 // Partial redraw: only the Port digits area (no full screen redraw)
 void drawPortEditArea() {
+  int contentY = 54;
   int startX = 20;
-  int startY = 32 + 28 + 28 + 28; // Tab + Brightness + Host + Port offset
+  int startY = contentY + 10; // Base Y position
+  int lineH = 22;
+  startY += lineH; // Skip Brightness row
+  startY += lineH; // Skip Trans Host row --> Trans Port row
   int portX = startX + 90;
-  int lineH = 24;
 
-  // Clear the entire row
-  tft.fillRect(startX, startY, 320 - startX, lineH, UI_BG);
+  // Clear only the port value area (70 pixels for 5 digits)
+  tft.fillRect(portX, startY, 70, 16, UI_BG);
 
   // Redraw digits
   for (int i = 0; i < 5; i++) {
@@ -228,13 +225,6 @@ void drawPortEditArea() {
 
     tft.setCursor(portX + i * 12, startY);
     tft.print(tempPort[i]);
-  }
-
-  // Hint
-  if (settingsIndex == 2) {
-    tft.setTextColor(TFT_YELLOW, UI_BG);
-    tft.setCursor(250, startY);
-    tft.print("Press A");
   }
 }
 

@@ -82,9 +82,16 @@ void drawStatusBar() {
   // since positions shift, we might need to clear chunks. For simplicity: If
   // any layout-affecting validation changes, redraw the whole bar.
 
+  // Battery has its own 2-second update timer - allow redraw for it
+  static unsigned long lastBatteryCheck = 0;
+  bool batteryTimerExpired = (millis() - lastBatteryCheck > 2000);
+  if (batteryTimerExpired)
+    lastBatteryCheck = millis();
+
   bool needsRedraw = stateChanged || rssiChanged ||
                      (currentState == STATE_CONNECTING && blinkChanged) ||
-                     otaChanged || transChanged || statsChanged;
+                     otaChanged || transChanged || statsChanged ||
+                     batteryTimerExpired;
 
   if (!needsRedraw)
     return;

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.12.2] - 2026-01-03
+### Fixed
+- **Settings Edit Position Artifacts**: Fixed text shifting down when editing IP/Port values. Y coordinates in partial redraw functions now match the main drawSettings() layout exactly.
+
 ## [1.12.1] - 2026-01-03
 ### Fixed
 - **Battery Update in AP Mode**: Battery icon and percentage now update correctly in AP mode (status bar timer was not triggering).
