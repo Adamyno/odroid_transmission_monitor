@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.12.1] - 2026-01-03
+### Fixed
+- **Battery Update in AP Mode**: Battery icon and percentage now update correctly in AP mode (status bar timer was not triggering).
+- **Settings Edit Flicker**: Editing IP address or Port no longer causes full screen flicker. Only the edited field area is redrawn.
+
 ## [1.12.0] - 2026-01-03
 ### Added
 - **Factory Reset Button**: New red button on Settings page that clears all settings (WiFi, Transmission config) and restarts in AP mode.

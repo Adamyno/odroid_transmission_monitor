@@ -173,6 +173,71 @@ void resetSettingsMenu() {
   testSaveSelected = false;
 }
 
+// Partial redraw: only the IP octets area (no full screen redraw)
+void drawIPEditArea() {
+  int startX = 20;
+  int startY =
+      32 + 28 + 28; // Tab bar height + Brightness row + Host label offset
+  int ipX = startX + 90;
+  int lineH = 24;
+
+  // Clear the entire row (including hint area)
+  tft.fillRect(startX, startY, 320 - startX, lineH, UI_BG);
+
+  // Redraw octets
+  for (int i = 0; i < 4; i++) {
+    if (i == editOctet)
+      tft.setTextColor(TFT_BLACK, TFT_GREEN);
+    else
+      tft.setTextColor(UI_WHITE, UI_BG);
+
+    char buf[4];
+    sprintf(buf, "%3d", tempIP[i]);
+    tft.setCursor(ipX + i * 36, startY);
+    tft.print(buf);
+    if (i < 3) {
+      tft.setTextColor(UI_WHITE, UI_BG);
+      tft.print(".");
+    }
+  }
+
+  // Hint
+  if (settingsIndex == 2) {
+    tft.setTextColor(TFT_YELLOW, UI_BG);
+    tft.setCursor(250, startY);
+    tft.print("Press A");
+  }
+}
+
+// Partial redraw: only the Port digits area (no full screen redraw)
+void drawPortEditArea() {
+  int startX = 20;
+  int startY = 32 + 28 + 28 + 28; // Tab + Brightness + Host + Port offset
+  int portX = startX + 90;
+  int lineH = 24;
+
+  // Clear the entire row
+  tft.fillRect(startX, startY, 320 - startX, lineH, UI_BG);
+
+  // Redraw digits
+  for (int i = 0; i < 5; i++) {
+    if (i == editDigit)
+      tft.setTextColor(TFT_BLACK, TFT_GREEN);
+    else
+      tft.setTextColor(UI_WHITE, UI_BG);
+
+    tft.setCursor(portX + i * 12, startY);
+    tft.print(tempPort[i]);
+  }
+
+  // Hint
+  if (settingsIndex == 2) {
+    tft.setTextColor(TFT_YELLOW, UI_BG);
+    tft.setCursor(250, startY);
+    tft.print("Press A");
+  }
+}
+
 void drawSettings() {
   // Fill content area with dark background
   tft.fillRect(0, 24, 320, 216, UI_BG);
@@ -384,8 +449,12 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       editMode = 0;
       update = true;
     }
-    if (update)
-      drawSettings();
+    if (update) {
+      if (editMode == 0)
+        drawSettings(); // Full redraw when exiting edit mode
+      else
+        drawIPEditArea(); // Partial redraw while editing
+    }
     return true;
   } else if (editMode == 2) {
     // Editing Port digits
@@ -411,8 +480,12 @@ bool handleSettingsInput(bool up, bool down, bool left, bool right, bool a,
       editMode = 0;
       update = true;
     }
-    if (update)
-      drawSettings();
+    if (update) {
+      if (editMode == 0)
+        drawSettings(); // Full redraw when exiting edit mode
+      else
+        drawPortEditArea(); // Partial redraw while editing
+    }
     return true;
   }
 
