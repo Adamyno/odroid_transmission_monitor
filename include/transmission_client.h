@@ -14,6 +14,8 @@ public:
   bool isConnected();
   long getDownloadSpeed(); // Bytes/sec
   long getUploadSpeed();   // Bytes/sec
+  bool isAltSpeedEnabled();
+  void toggleAltSpeed();
 
 private:
   unsigned long _lastUpdate;
@@ -21,6 +23,7 @@ private:
   bool _connected;
   long _dlSpeed;
   long _ulSpeed;
+  bool _altSpeedEnabled;
   String _sessionId;
 
   void fetchStats();

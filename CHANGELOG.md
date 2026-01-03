@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.0] - 2026-01-03
+### Added
+- **Alt-Speed Toggle**: Press the speaker button (Select, GPIO 27) to toggle Transmission's alternative speed mode.
+- **Turtle Icon**: A cyan turtle icon now appears on the status bar (left of download speed) when alt-speed mode is active.
+
 ## [1.7.10] - 2026-01-03
 ### Fixed
 - **Status Bar**: Fixed a 1-pixel visual artifact from the upload icon remaining after disconnection.

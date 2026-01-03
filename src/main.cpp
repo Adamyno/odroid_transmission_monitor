@@ -199,6 +199,12 @@ void loop() {
   // --- Input & GUI Handling ---
   readInputs();
 
+  // Alt-Speed Toggle via Select (Speaker) Button
+  if (btnSelectPressed && transmission.isConnected()) {
+    transmission.toggleAltSpeed();
+    drawStatusBar(); // Force redraw to show/hide turtle icon
+  }
+
   // Menu toggle
   if (btnMenuPressed) {
     if (currentState == STATE_MENU || currentState == STATE_ABOUT ||

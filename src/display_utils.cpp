@@ -197,6 +197,21 @@ void drawStatusBar() {
     tft.setCursor(dlTextX, Y + 4);
     tft.print(dlStr);
 
+    // 5.1 Turtle Icon for Alt-Speed Mode (to the left of download stats)
+    if (transmission.isAltSpeedEnabled()) {
+      cursorX -= 18; // Space for turtle icon
+      int tx = cursorX;
+      int ty = Y + 2;
+      // Draw a simple turtle: shell (ellipse-ish) + head + legs
+      // Shell
+      tft.fillRoundRect(tx + 3, ty + 2, 10, 8, 3, TFT_CYAN);
+      // Head
+      tft.fillCircle(tx + 14, ty + 5, 2, TFT_CYAN);
+      // Legs (4 small lines)
+      tft.fillRect(tx + 4, ty + 10, 2, 3, TFT_CYAN);
+      tft.fillRect(tx + 10, ty + 10, 2, 3, TFT_CYAN);
+    }
+
   } else if (transChanged && !transConnected) {
     // Clear transmission area when disconnected
     // Fix: Clear up to cursorX to ensure no artifacts (like the 1px from UL
