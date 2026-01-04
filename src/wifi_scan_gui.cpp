@@ -2,7 +2,6 @@
 #include "config_utils.h"
 #include "display_utils.h"
 #include <WiFi.h>
-#include <esp_wps.h>
 
 // External TFT reference
 extern TFT_eSPI tft;
@@ -12,7 +11,7 @@ static WifiScanState wifiScanState = WIFI_SCAN_IDLE;
 static int networkCount = 0;
 static int selectedNetwork = 0;
 static int scrollOffset = 0;
-static int detailButtonIndex = 0; // 0=Connect, 1=WPS (if available)
+static int detailButtonIndex = 0; // 0=Connect
 
 // Max visible networks on screen
 #define VISIBLE_NETWORKS 6
@@ -65,6 +64,21 @@ void initWifiScanGui() {
   detailButtonIndex = 0;
 }
 
+// Draw scanning screen (called before actual scan)
+void drawScanningScreen() {
+  tft.fillRect(0, 24, 320, 216, UI_BG);
+
+  tft.setTextSize(2);
+  tft.setTextColor(UI_CYAN, UI_BG);
+  tft.setCursor(80, 100);
+  tft.print("Scanning...");
+
+  tft.setTextSize(1);
+  tft.setTextColor(UI_GREY, UI_BG);
+  tft.setCursor(70, 140);
+  tft.print("Please wait");
+}
+
 bool isInWifiScanMode() { return wifiScanState != WIFI_SCAN_IDLE; }
 
 WifiScanState getWifiScanState() { return wifiScanState; }
@@ -72,6 +86,9 @@ WifiScanState getWifiScanState() { return wifiScanState; }
 void enterWifiScanMode() {
   initWifiScanGui();
   wifiScanState = WIFI_SCAN_LIST;
+
+  // Show scanning screen first
+  drawScanningScreen();
 
   // Perform initial scan
   Serial.println("WiFi Scan: Starting...");
@@ -149,12 +166,6 @@ String getSecurityString(wifi_auth_mode_t auth) {
   }
 }
 
-// Check if WPS is supported (WPA/WPA2 PSK, not enterprise)
-bool isWPSCapable(wifi_auth_mode_t auth) {
-  return auth == WIFI_AUTH_WPA_PSK || auth == WIFI_AUTH_WPA2_PSK ||
-         auth == WIFI_AUTH_WPA_WPA2_PSK;
-}
-
 void drawNetworkListScreen() {
   // Clear content area
   tft.fillRect(0, 24, 320, 216, UI_BG);
@@ -189,25 +200,25 @@ void drawNetworkListScreen() {
         tft.setTextColor(TFT_WHITE, UI_BG);
       }
 
-      // RSSI icon
-      drawRSSIIcon(5, y + 4, scannedRSSI[idx]);
-
-      // Lock icon
+      // Lock icon (left side, if secured)
       if (scannedSecure[idx]) {
-        drawLockIcon(22, y + 3, true);
+        drawLockIcon(5, y + 3, true);
       }
 
-      // SSID (truncate if too long)
+      // SSID (after lock icon area)
       String displaySSID = scannedSSIDs[idx];
-      if (displaySSID.length() > 28) {
-        displaySSID = displaySSID.substring(0, 25) + "...";
+      if (displaySSID.length() > 24) {
+        displaySSID = displaySSID.substring(0, 21) + "...";
       }
-      tft.setCursor(38, y + 6);
+      tft.setCursor(22, y + 6);
       tft.print(displaySSID);
 
-      // RSSI value
-      tft.setCursor(280, y + 6);
+      // RSSI value (right side)
+      tft.setCursor(260, y + 6);
       tft.printf("%d", scannedRSSI[idx]);
+
+      // RSSI icon (far right, after dBm value)
+      drawRSSIIcon(300, y + 4, scannedRSSI[idx]);
     }
 
     // Scroll indicators
@@ -250,7 +261,7 @@ void drawNetworkDetailsScreen() {
   // Details
   tft.setTextSize(1);
   int y = 60;
-  int lineH = 18;
+  int lineH = 16;
 
   tft.setTextColor(TFT_WHITE, UI_BG);
 
@@ -277,6 +288,9 @@ void drawNetworkDetailsScreen() {
   else
     strength = " (Weak)";
   tft.print(strength);
+
+  // RSSI icon next to signal text
+  drawRSSIIcon(250, y - 2, scannedRSSI[idx]);
   y += lineH;
 
   tft.setTextColor(TFT_WHITE, UI_BG);
@@ -284,41 +298,18 @@ void drawNetworkDetailsScreen() {
   tft.print("Security: ");
   tft.setTextColor(UI_GREY, UI_BG);
   tft.print(getSecurityString(scannedAuth[idx]));
-  y += lineH * 2;
+  y += lineH + 8;
 
-  // Action buttons
-  bool wpsAvailable = isWPSCapable(scannedAuth[idx]);
+  // Action button - Connect only
   int btnW = 90;
   int btnH = 24;
   int btnX = 20;
 
-  // Connect button (always shown)
-  bool connectSelected = (detailButtonIndex == 0);
-  if (connectSelected)
-    tft.fillRoundRect(btnX, y, btnW, btnH, 4, TFT_GREEN);
-  else
-    tft.drawRoundRect(btnX, y, btnW, btnH, 4, TFT_GREEN);
-
-  tft.setTextColor(connectSelected ? TFT_BLACK : TFT_GREEN,
-                   connectSelected ? TFT_GREEN : UI_BG);
+  // Connect button
+  tft.fillRoundRect(btnX, y, btnW, btnH, 4, TFT_GREEN);
+  tft.setTextColor(TFT_BLACK, TFT_GREEN);
   tft.setCursor(btnX + 20, y + 7);
   tft.print("Connect");
-
-  // WPS button (if available)
-  if (wpsAvailable) {
-    int wpsX = btnX + btnW + 20;
-    bool wpsSelected = (detailButtonIndex == 1);
-
-    if (wpsSelected)
-      tft.fillRoundRect(wpsX, y, btnW + 10, btnH, 4, UI_CYAN);
-    else
-      tft.drawRoundRect(wpsX, y, btnW + 10, btnH, 4, UI_CYAN);
-
-    tft.setTextColor(wpsSelected ? TFT_BLACK : UI_CYAN,
-                     wpsSelected ? UI_CYAN : UI_BG);
-    tft.setCursor(wpsX + 10, y + 7);
-    tft.print("WPS Connect");
-  }
 
   // Status message
   if (connectionStatus.length() > 0 && millis() < statusTimeout) {
@@ -332,10 +323,7 @@ void drawNetworkDetailsScreen() {
   tft.setTextSize(1);
   tft.setTextColor(UI_GREY, UI_TAB_BG);
   tft.setCursor(5, 225);
-  if (wpsAvailable)
-    tft.print("L/R:Switch  A:Action  B:Back");
-  else
-    tft.print("A:Connect  B:Back");
+  tft.print("A:Connect  B:Back");
 }
 
 void drawPasswordScreen() {
@@ -529,57 +517,6 @@ bool tryConnect(const String &ssidToConnect, const String &pwd) {
   }
 }
 
-// Try WPS connect
-bool tryWpsConnect() {
-  connectionStatus = "Press WPS on router...";
-  statusTimeout = millis() + 120000;
-
-  wifiScanState = WIFI_SCAN_CONNECTING;
-  drawWifiScanScreen();
-
-  WiFi.mode(WIFI_STA);
-
-  // ESP32 WPS
-  esp_wps_config_t config = WPS_CONFIG_INIT_DEFAULT(WPS_TYPE_PBC);
-  esp_wifi_wps_enable(&config);
-  esp_wifi_wps_start(0);
-
-  // Wait for connection (max 2 minutes)
-  unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 120000) {
-    delay(1000);
-    Serial.print("W");
-  }
-  Serial.println();
-
-  esp_wifi_wps_disable();
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.printf("WPS Connected! IP: %s\n", WiFi.localIP().toString().c_str());
-
-    // Save credentials (ESP32 stores them internally after WPS)
-    ssid = WiFi.SSID();
-    password = WiFi.psk();
-    saveConfig();
-
-    connectionStatus = "";
-    exitWifiScanMode();
-    return true;
-  } else {
-    Serial.println("WPS failed!");
-
-    // Go back to AP mode
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSSID.c_str(),
-                apPassword.length() > 0 ? apPassword.c_str() : NULL);
-
-    connectionStatus = "WPS failed or timeout";
-    statusTimeout = millis() + 5000;
-    wifiScanState = WIFI_SCAN_DETAILS;
-    return false;
-  }
-}
-
 bool handleWifiScanInput(bool up, bool down, bool left, bool right, bool a,
                          bool b, bool start, bool select) {
   bool update = false;
@@ -613,35 +550,20 @@ bool handleWifiScanInput(bool up, bool down, bool left, bool right, bool a,
     break;
 
   case WIFI_SCAN_DETAILS: {
-    bool wpsAvailable = isWPSCapable(scannedAuth[selectedNetwork]);
-    int maxBtn = wpsAvailable ? 1 : 0;
-
-    if (left && detailButtonIndex > 0) {
-      detailButtonIndex--;
-      update = true;
-    } else if (right && detailButtonIndex < maxBtn) {
-      detailButtonIndex++;
-      update = true;
-    } else if (a) {
-      if (detailButtonIndex == 0) {
-        // Connect
-        if (!scannedSecure[selectedNetwork]) {
-          // Open network - connect directly
-          tryConnect(scannedSSIDs[selectedNetwork], "");
-        } else {
-          // Password required
-          passwordBuffer = "";
-          kbRow = 0;
-          kbCol = 0;
-          shiftActive = false;
-          wifiScanState = WIFI_SCAN_PASSWORD;
-        }
-        update = true;
-      } else if (detailButtonIndex == 1 && wpsAvailable) {
-        // WPS
-        tryWpsConnect();
-        update = true;
+    if (a) {
+      // Connect
+      if (!scannedSecure[selectedNetwork]) {
+        // Open network - connect directly
+        tryConnect(scannedSSIDs[selectedNetwork], "");
+      } else {
+        // Password required
+        passwordBuffer = "";
+        kbRow = 0;
+        kbCol = 0;
+        shiftActive = false;
+        wifiScanState = WIFI_SCAN_PASSWORD;
       }
+      update = true;
     } else if (b) {
       wifiScanState = WIFI_SCAN_LIST;
       update = true;
@@ -694,22 +616,40 @@ bool handleWifiScanInput(bool up, bool down, bool left, bool right, bool a,
             passwordBuffer += ' ';
           }
         } else if (kbCol == 2) {
-          // OK - same as START
-          tryConnect(scannedSSIDs[selectedNetwork], passwordBuffer);
+          // OK - validate password length first
+          if (passwordBuffer.length() < 8) {
+            connectionStatus = "Password too short (min 8 chars)";
+            statusTimeout = millis() + 3000;
+          } else if (passwordBuffer.length() > 32) {
+            connectionStatus = "Password too long (max 32 chars)";
+            statusTimeout = millis() + 3000;
+          } else {
+            tryConnect(scannedSSIDs[selectedNetwork], passwordBuffer);
+          }
         }
       }
       update = true;
     } else if (b) {
-      // Delete last character
+      // Delete last character (B only deletes, does NOT exit)
       if (passwordBuffer.length() > 0) {
         passwordBuffer =
             passwordBuffer.substring(0, passwordBuffer.length() - 1);
       }
       update = true;
     } else if (start) {
-      // Connect with current password
-      tryConnect(scannedSSIDs[selectedNetwork], passwordBuffer);
-      update = true;
+      // Connect with current password - validate length first
+      if (passwordBuffer.length() < 8) {
+        connectionStatus = "Password too short (min 8 chars)";
+        statusTimeout = millis() + 3000;
+        update = true;
+      } else if (passwordBuffer.length() > 32) {
+        connectionStatus = "Password too long (max 32 chars)";
+        statusTimeout = millis() + 3000;
+        update = true;
+      } else {
+        tryConnect(scannedSSIDs[selectedNetwork], passwordBuffer);
+        update = true;
+      }
     } else if (select) {
       // Cancel - back to details
       wifiScanState = WIFI_SCAN_DETAILS;

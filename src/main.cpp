@@ -302,8 +302,8 @@ void loop() {
       }
     }
 
-    // B button also exits (Global back)
-    if (btnBPressed &&
+    // B button also exits (Global back) - BUT NOT when in WiFi scan mode!
+    if (btnBPressed && !isInWifiScanMode() &&
         currentState != STATE_SETTINGS) { // Allow B in Settings for Test? No, A
                                           // for Test. B for Back?
       if (WiFi.status() == WL_CONNECTED)
@@ -313,8 +313,8 @@ void loop() {
       drawStatusBar();
       drawDashboard();
     }
-    // Handle B in settings explicitly?
-    if (btnBPressed && currentState == STATE_SETTINGS) {
+    // Handle B in settings explicitly - BUT NOT when in WiFi scan mode!
+    if (btnBPressed && !isInWifiScanMode() && currentState == STATE_SETTINGS) {
       // Go back to Dashboard
       if (WiFi.status() == WL_CONNECTED)
         currentState = STATE_CONNECTED;
@@ -386,6 +386,13 @@ void checkWiFiConnection() {
   static unsigned long lastCheck = 0;
   if (millis() - lastCheck > 5000) {
     lastCheck = millis();
+
+    // Skip reconnect if in AP mode, WiFi scan mode, or SSID is empty
+    if (currentState == STATE_AP_MODE || isInWifiScanMode() ||
+        ssid.length() == 0) {
+      return;
+    }
+
     if (WiFi.status() != WL_CONNECTED && currentState != STATE_CONNECTING) {
       Serial.println("WiFi Check: Not Connected. Reconnecting...");
       WiFi.disconnect();

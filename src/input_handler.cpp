@@ -75,9 +75,18 @@ void readInputs() {
   prevBtnB = curB;
 
   // --- Joystick handling (Analog) ---
+  // ODROID-GO joystick actual values (measured):
+  // - Center (rest): X≈0, Y≈0
+  // - UP: Y=4095, DOWN: Y≈2000
+  // - LEFT: X=4095, RIGHT: X≈2000
   int joyY = analogRead(BTN_JOY_Y);
+  int joyX = analogRead(BTN_JOY_X);
+
+  // UP: Y > 3000 (high extreme)
+  // DOWN: Y between 1500 and 2500 (middle range)
+  // CENTER: Y < 1000 (rest position)
   bool curUp = (joyY > 3000);
-  bool curDown = (joyY > 1000 && joyY <= 3000);
+  bool curDown = (joyY > 1500 && joyY < 2500);
 
   if (curUp && !prevUp)
     btnUpPressed = true;
@@ -87,9 +96,11 @@ void readInputs() {
   prevUp = curUp;
   prevDown = curDown;
 
-  int joyX = analogRead(BTN_JOY_X);
+  // LEFT: X > 3000 (high extreme)
+  // RIGHT: X between 1500 and 2500 (middle range)
+  // CENTER: X < 1000 (rest position)
   bool curLeft = (joyX > 3000);
-  bool curRight = (joyX > 1000 && joyX <= 3000);
+  bool curRight = (joyX > 1500 && joyX < 2500);
 
   if (curLeft && !prevLeft)
     btnLeftPressed = true;

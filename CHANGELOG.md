@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.21.0] - 2026-01-04
+### Removed
+- **WPS functionality removed** - ESP32 WPS implementation was unstable and unreliable. Simplified to password-only WiFi connection. Flash usage reduced from 92.3% to 90.5%.
+
+## [1.20.4] - 2026-01-04
+### Fixed
+- **Joystick ADC Thresholds**: Fixed based on actual ODROID-GO measurements (CENTER=~0, UP/LEFT=4095, DOWN/RIGHT=~2000). DOWN/RIGHT now uses range check (1500-2500) instead of <1300 which incorrectly triggered at center position (0) causing jump-back bug on release.
+
+## [1.20.2] - 2026-01-04
+### Fixed
+- **Password B-button Bug**: B button in password entry now ONLY deletes characters - no longer exits to dashboard (use SELECT to cancel, MENU to exit)
+- **Joystick Thresholds**: Reverted to original thresholds (>3000/<1000) that worked better for UP/LEFT navigation
+
+## [1.20.1] - 2026-01-04
+### Fixed
+- **WiFi Scan**: Now shows "Scanning..." screen before starting scan (prevents freeze appearance)
+- **Network List**: RSSI signal icon moved to far right (after dBm value) for cleaner layout
+- **Network Details**: Added RSSI signal icon, "WPS: Supported/Not Supported" info line
+- **WPS Connect**: 30-second countdown with visual display, auto-returns to details on timeout
+- **Password Entry**: B button now only deletes characters (SELECT cancels), password length validation (8-32 chars)
+- **Joystick Input**: Improved thresholds with proper dead zones (>3200 UP/LEFT, <800 DOWN/RIGHT) to prevent false triggers
+
 ## [1.20.0] - 2026-01-03
 ### Added
 - **WiFi Scan TFT GUI**: In AP mode, Settings page now shows "WiFi Scan" button that opens a full WiFi configuration interface:

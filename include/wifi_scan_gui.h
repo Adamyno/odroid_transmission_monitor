@@ -6,11 +6,12 @@
 
 // WiFi Scan GUI States
 enum WifiScanState {
-  WIFI_SCAN_IDLE,      // Not in WiFi scan mode
-  WIFI_SCAN_LIST,      // Showing network list
-  WIFI_SCAN_DETAILS,   // Showing selected network details
-  WIFI_SCAN_PASSWORD,  // Password entry screen
-  WIFI_SCAN_CONNECTING // Connection in progress
+  WIFI_SCAN_IDLE,        // Not in WiFi scan mode
+  WIFI_SCAN_LIST,        // Showing network list
+  WIFI_SCAN_DETAILS,     // Showing selected network details
+  WIFI_SCAN_PASSWORD,    // Password entry screen
+  WIFI_SCAN_MANUAL_SSID, // Manual SSID entry for hidden networks
+  WIFI_SCAN_CONNECTING   // Connection in progress
 };
 
 // Max networks to cache
