@@ -1,6 +1,7 @@
 #include "input_handler.h"
 
 bool btnMenuPressed = false;
+bool btnVolumePressed = false;
 bool btnSelectPressed = false;
 bool btnStartPressed = false;
 bool btnUpPressed = false;
@@ -12,6 +13,7 @@ bool btnBPressed = false;
 
 // State tracking for edge detection
 static bool prevBtnMenu = true;
+static bool prevBtnVolume = true;
 static bool prevBtnSelect = true;
 static bool prevBtnStart = true;
 static bool prevBtnA = true;
@@ -26,6 +28,7 @@ unsigned long lastDebounceTime = 0;
 
 void setupInputs() {
   pinMode(BTN_MENU, INPUT_PULLUP);
+  pinMode(BTN_VOLUME, INPUT_PULLUP); // GPIO 0 has external pull-up
   pinMode(BTN_SELECT, INPUT_PULLUP);
   pinMode(BTN_START, INPUT_PULLUP);
   pinMode(BTN_A, INPUT_PULLUP);
@@ -35,6 +38,7 @@ void setupInputs() {
 void readInputs() {
   // Reset one-shot flags
   btnMenuPressed = false;
+  btnVolumePressed = false;
   btnSelectPressed = false;
   btnStartPressed = false;
   btnUpPressed = false;
@@ -53,6 +57,11 @@ void readInputs() {
   if (curMenu == LOW && prevBtnMenu == HIGH)
     btnMenuPressed = true;
   prevBtnMenu = curMenu;
+
+  bool curVolume = digitalRead(BTN_VOLUME);
+  if (curVolume == LOW && prevBtnVolume == HIGH)
+    btnVolumePressed = true;
+  prevBtnVolume = curVolume;
 
   bool curSelect = digitalRead(BTN_SELECT);
   if (curSelect == LOW && prevBtnSelect == HIGH)

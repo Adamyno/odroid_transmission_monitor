@@ -5,6 +5,7 @@
 
 // ODROID-GO Button Pins
 #define BTN_MENU 13
+#define BTN_VOLUME 0
 #define BTN_SELECT 27
 #define BTN_START 39
 #define BTN_A 32
@@ -16,6 +17,7 @@ void setupInputs();
 void readInputs();
 
 extern bool btnMenuPressed;
+extern bool btnVolumePressed;
 extern bool btnSelectPressed;
 extern bool btnStartPressed;
 extern bool btnUpPressed;

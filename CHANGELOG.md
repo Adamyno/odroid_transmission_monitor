@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.22.0] - 2026-01-04
+### Added
+- **Torrent List View** - Replaces dashboard when connected to Transmission server:
+  - Scrollable list with torrent name, upload/download speeds, priority, ratio, and progress bar
+  - 10 filter modes: All, Down, QDown, Seed, QSeed, Paused, Done, Partial, Active, Check
+  - Search functionality with virtual keyboard (VOLUME button to open/close)
+  - B button in search = backspace
+  - START button: Pause/Resume selected torrent
+  - SELECT button: Alt-Speed toggle (unchanged)
+  - LEFT/RIGHT: Change filter
+  - UP/DOWN: Navigate list
+  - Supports up to 200 torrents (64KB JSON buffer)
+- **VOLUME button** (GPIO 0) added to input handler
+- `torrent_list_gui.h/cpp` - New module for torrent list UI
+- `TorrentInfo` struct and `fetchTorrents()` in TransmissionClient
+- Periodic dashboard refresh every 5 seconds when connected
+
 ## [1.21.0] - 2026-01-04
 ### Removed
 - **WPS functionality removed** - ESP32 WPS implementation was unstable and unreliable. Simplified to password-only WiFi connection. Flash usage reduced from 92.3% to 90.5%.

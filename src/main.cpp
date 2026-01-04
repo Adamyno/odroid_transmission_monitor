@@ -14,6 +14,7 @@
 #include "display_utils.h"
 #include "gui_handler.h"
 #include "input_handler.h"
+#include "torrent_list_gui.h"
 #include "transmission_client.h"
 #include "web_pages.h"
 #include "web_server.h"
@@ -209,19 +210,41 @@ void loop() {
   // Menu toggle
   if (btnMenuPressed) {
     if (currentState == STATE_MENU || currentState == STATE_ABOUT ||
-        currentState == STATE_SETTINGS) {
-      // Exit tabbed interface
-      if (WiFi.status() == WL_CONNECTED)
-        currentState = STATE_CONNECTED;
-      else
-        currentState = STATE_AP_MODE;
-      drawStatusBar();
-      drawDashboard();
+        currentState == STATE_SETTINGS || currentState == STATE_CONNECTED) {
+      // Exit tabbed interface / Enter menu from dashboard
+      if (currentState == STATE_CONNECTED) {
+        // Enter menu from torrent list
+        menuIndex = 0;
+        currentState = STATE_MENU;
+        drawStatus();
+      } else {
+        // Exit menu to dashboard
+        if (WiFi.status() == WL_CONNECTED)
+          currentState = STATE_CONNECTED;
+        else
+          currentState = STATE_AP_MODE;
+        drawStatusBar();
+        drawDashboard();
+      }
     } else {
-      // Enter tabbed interface
+      // Enter tabbed interface from AP mode or other
       menuIndex = 0;
       currentState = STATE_MENU;
       drawStatus();
+    }
+  }
+
+  // Torrent list input handling (when on dashboard/connected)
+  if (currentState == STATE_CONNECTED && transmission.isConnected()) {
+    if (btnUpPressed || btnDownPressed || btnLeftPressed || btnRightPressed ||
+        btnAPressed || btnBPressed || btnStartPressed || btnVolumePressed) {
+      bool needsRedraw = handleTorrentListInput(
+          btnUpPressed, btnDownPressed, btnLeftPressed, btnRightPressed,
+          btnAPressed, btnBPressed, btnStartPressed, btnSelectPressed,
+          btnVolumePressed);
+      if (needsRedraw) {
+        drawDashboard();
+      }
     }
   }
 
@@ -338,6 +361,10 @@ void loop() {
   if (millis() - lastTabUpdate > 5000) {
     if (currentState == STATE_MENU) {
       updateStatusValues(); // Partial update to prevent flickering
+    }
+    // Refresh dashboard/torrent list when connected
+    if (currentState == STATE_CONNECTED) {
+      drawDashboard();
     }
     lastTabUpdate = millis();
   }

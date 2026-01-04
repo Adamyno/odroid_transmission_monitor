@@ -2,6 +2,7 @@
 #include "battery_utils.h"
 #include "config_utils.h"
 #include "input_handler.h"
+#include "torrent_list_gui.h"
 #include "transmission_client.h"
 #include "web_pages.h" // For VERSION constant
 #include "wifi_scan_gui.h"
@@ -841,69 +842,36 @@ void menuSelect() {
 }
 
 void drawDashboard() {
-  // Fill content area with dark background
+  // If connected to Transmission server, show torrent list
+  if (WiFi.status() == WL_CONNECTED && transmission.isConnected()) {
+    drawTorrentList();
+    return;
+  }
+
+  // Otherwise show waiting/connection screen
   tft.fillRect(0, 24, 320, 216, UI_BG);
 
-  int cardX = 20;
-  int cardY = 44;
-  int cardW = 280;
-  int cardH = 160;
-  tft.fillRoundRect(cardX, cardY, cardW, cardH, 8, UI_CARD_BG);
+  // Transmission icon centered
+  int iconX = 160 - 32;
+  int iconY = 100 - 32;
+  drawTransmissionIcon(iconX, iconY, false);
 
-  // Title
-  tft.setTextSize(2);
-  tft.setTextColor(UI_CYAN, UI_CARD_BG);
-  tft.setCursor(cardX + 20, cardY + 15);
-  tft.print("Dashboard");
-
-  // Divider
-  tft.drawFastHLine(cardX + 15, cardY + 40, cardW - 30, UI_GREY);
-
-  // Content
+  // Connection Status Text
   tft.setTextSize(1);
-  int lineH = 20;
-  int startTextY = cardY + 55;
+  tft.setTextColor(UI_GREY, UI_BG);
 
-  tft.setTextColor(UI_WHITE, UI_CARD_BG);
-  tft.setCursor(cardX + 20, startTextY);
-  tft.print("Status: ");
-
+  String statusMsg;
   if (WiFi.status() == WL_CONNECTED) {
-    tft.setTextColor(TFT_GREEN, UI_CARD_BG);
-    tft.print("Connected");
-
-    tft.setTextColor(UI_GREY, UI_CARD_BG);
-    tft.setCursor(cardX + 20, startTextY + lineH);
-    tft.print("IP: ");
-    tft.setTextColor(UI_WHITE, UI_CARD_BG);
-    tft.print(WiFi.localIP().toString());
+    statusMsg = "Searching for Transmission...";
   } else {
-    tft.setTextColor(TFT_YELLOW, UI_CARD_BG);
-    // Logo / Icon
-    // Using drawTransmissionIcon
-    // Center: 160, 132 (Center of 216 area is 24 + 108 = 132)
-    // Icon is 64x64, so subtract 32
-    int iconX = 160 - 32;
-    int iconY = 120 - 32;
-
-#include "transmission_client.h" // Need access to check connection
-    drawTransmissionIcon(iconX, iconY, transmission.isConnected());
-
-    // Connection Status Text
-    tft.setTextSize(1);
-    tft.setTextColor(UI_GREY, UI_BG);
-    String statusMsg =
-        (WiFi.status() == WL_CONNECTED)
-            ? (transmission.isConnected() ? "Connected to Server"
-                                          : "Searching for Server...")
-            : "WiFi Disconnected";
-
-    int txtW = tft.textWidth(statusMsg);
-    tft.setCursor(160 - (txtW / 2), 170);
-    tft.print(statusMsg);
-
-    tft.setTextColor(UI_GREY, UI_BG);
-    tft.setCursor(10, 220);
-    tft.print("Press MENU for options");
+    statusMsg = "WiFi Disconnected";
   }
+
+  int txtW = tft.textWidth(statusMsg);
+  tft.setCursor(160 - (txtW / 2), 150);
+  tft.print(statusMsg);
+
+  tft.setTextColor(UI_GREY, UI_BG);
+  tft.setCursor(80, 220);
+  tft.print("Press MENU for options");
 }
