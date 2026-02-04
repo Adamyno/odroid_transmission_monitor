@@ -155,6 +155,15 @@ void setupServerRoutes() {
 // Scan handler that returns JSON for web_pages.h JS
 void handleScanWifi() {
   Serial.println("Hit /scan_wifi");
+
+  // Ensure WiFi mode allows scanning (needs STA component)
+  wifi_mode_t currentMode = WiFi.getMode();
+  if (currentMode == WIFI_MODE_AP) {
+    Serial.println("Web Scan: Switching to AP_STA mode for scanning");
+    WiFi.mode(WIFI_AP_STA);
+    delay(100); // Give time for mode switch
+  }
+
   int n = WiFi.scanNetworks();
   Serial.printf("Scanned %d networks\n", n);
   DynamicJsonDocument doc(2048);
@@ -169,6 +178,7 @@ void handleScanWifi() {
     }
   }
 
+  WiFi.scanDelete();
   String json;
   serializeJson(doc, json);
   server.send(200, "application/json", json);

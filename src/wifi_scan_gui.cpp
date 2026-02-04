@@ -90,18 +90,38 @@ void enterWifiScanMode() {
   // Show scanning screen first
   drawScanningScreen();
 
-  // Perform initial scan
-  Serial.println("WiFi Scan: Starting...");
-  int n = WiFi.scanNetworks();
-  Serial.printf("WiFi Scan: Found %d networks\n", n);
+  // Ensure WiFi mode allows scanning (needs STA component)
+  wifi_mode_t currentMode = WiFi.getMode();
+  Serial.printf("WiFi Scan: Current mode=%d (0=NULL,1=STA,2=AP,3=AP_STA)\n",
+                currentMode);
 
-  networkCount = min(n, MAX_NETWORKS);
-  for (int i = 0; i < networkCount; i++) {
-    scannedSSIDs[i] = WiFi.SSID(i);
-    scannedRSSI[i] = WiFi.RSSI(i);
-    scannedSecure[i] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-    scannedBSSID[i] = WiFi.BSSIDstr(i);
-    scannedAuth[i] = WiFi.encryptionType(i);
+  if (currentMode == WIFI_MODE_AP || currentMode == WIFI_MODE_NULL) {
+    Serial.println("WiFi Scan: Switching to AP_STA mode for scanning");
+    WiFi.mode(WIFI_AP_STA);
+    delay(500); // Longer delay for mode switch
+  }
+
+  // Disconnect from any STA connection to allow clean scan
+  WiFi.disconnect(false); // false = don't turn off STA mode
+  delay(100);
+
+  // Perform initial scan
+  Serial.println("WiFi Scan: Starting scan...");
+  int n = WiFi.scanNetworks(false, true); // false=async, true=show hidden
+  Serial.printf("WiFi Scan: Result=%d networks\n", n);
+
+  if (n < 0) {
+    Serial.printf("WiFi Scan Error: %d\n", n);
+    networkCount = 0;
+  } else {
+    networkCount = min(n, MAX_NETWORKS);
+    for (int i = 0; i < networkCount; i++) {
+      scannedSSIDs[i] = WiFi.SSID(i);
+      scannedRSSI[i] = WiFi.RSSI(i);
+      scannedSecure[i] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+      scannedBSSID[i] = WiFi.BSSIDstr(i);
+      scannedAuth[i] = WiFi.encryptionType(i);
+    }
   }
   WiFi.scanDelete();
 }

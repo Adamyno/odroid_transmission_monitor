@@ -411,23 +411,40 @@ void setupAP() {
 
 void checkWiFiConnection() {
   static unsigned long lastCheck = 0;
+  static int reconnectAttempts = 0;
+  const int MAX_RECONNECT_ATTEMPTS = 3;
+
   if (millis() - lastCheck > 5000) {
     lastCheck = millis();
 
     // Skip reconnect if in AP mode, WiFi scan mode, or SSID is empty
     if (currentState == STATE_AP_MODE || isInWifiScanMode() ||
         ssid.length() == 0) {
+      reconnectAttempts = 0; // Reset counter when in AP mode
       return;
     }
 
     if (WiFi.status() != WL_CONNECTED && currentState != STATE_CONNECTING) {
-      Serial.println("WiFi Check: Not Connected. Reconnecting...");
+      reconnectAttempts++;
+      Serial.printf("WiFi Check: Not Connected. Attempt %d/%d\n",
+                    reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
+
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        Serial.println("Max reconnect attempts reached! Switching to AP Mode.");
+        reconnectAttempts = 0;
+        startAPMode();
+        return;
+      }
+
       WiFi.disconnect();
       WiFi.begin(ssid.c_str(), password.c_str());
+      connectionStartTime = millis(); // Reset timer for timeout check
       if (currentState == STATE_CONNECTED) {
         currentState = STATE_CONNECTING;
         drawStatusBar();
       }
+    } else if (WiFi.status() == WL_CONNECTED) {
+      reconnectAttempts = 0; // Reset on successful connection
     }
   }
 }
